@@ -2,19 +2,26 @@ syntax = "proto3";
 
 option go_package = "Sisconn-raft/raft/transport";
 
-package transport;
+import "raft.proto";
 
-service Service {
+package transport.proto;
+
+service RaftService {
     rpc Ping (PingRequest) returns (MessageResponse);
     rpc Get (KeyedRequest) returns (ValueResponse);
     rpc Set (KeyValuedRequest) returns (MessageResponse);
     rpc Strln (KeyedRequest) returns (ValueResponse);
     rpc Del (KeyedRequest) returns (ValueResponse);
     rpc Append (KeyValuedRequest) returns (MessageResponse);
+
+    rpc ReqLog (LogRequest) returns (LogResponse);
+
+    rpc AddNode (KeyValuedRequest) returns (MessageResponse);
+    rpc RemoveNode (KeyedRequest) returns (MessageResponse);
 }
 
 message PingRequest {
-    // in case ping can accept parameter in the future
+    // none, for now; in case ping can accept parameter in the future
 }
 
 message KeyValuedRequest {
@@ -32,4 +39,12 @@ message KeyedRequest {
 
 message ValueResponse {
     string value = 1;
+}
+
+message LogRequest {
+    // none, for now; in case request log uses parameter in the future
+}
+
+message LogResponse {
+    repeated LogEntry logEntries = 1;
 }

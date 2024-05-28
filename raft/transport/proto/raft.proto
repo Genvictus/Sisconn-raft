@@ -2,7 +2,7 @@ syntax = "proto3";
 
 option go_package = "Sisconn-raft/raft/transport";
 
-package transport;
+package transport.proto;
 
 service Raft {
     rpc AppendEntries (AppendEntriesArg) returns (AppendResult);
@@ -11,13 +11,15 @@ service Raft {
 
 message AppendEntriesArg {
     uint64 term = 1;
-    uint64 leaderId = 2;
+    string leaderId = 2;
     uint64 prevLogIndex = 3;
 
     uint64 prevLogTerm = 4;
     repeated LogEntry logEntries = 5;
 
     uint64 leaderCommit = 6;
+
+    uint64 logType = 7;
 }
 
 message LogEntry {
@@ -33,8 +35,9 @@ message AppendResult {
 
 message RequestVoteArg {
     uint64 term = 1;
-    uint64 candidateId = 2;
-    uint64 lastLogIndex = 3;
+    string candidateId = 2;
+    // last log index for each logs
+    map<uint32, uint64> lastLogIndex = 3;
     uint64 lastLogTerm = 4;
 }
 
