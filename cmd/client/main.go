@@ -40,5 +40,7 @@ func RunCommandLoop() {
 		}
 
 		input = strings.TrimSpace(input)
+
+		ExecuteCommand(input)
 	}
 }
