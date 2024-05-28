@@ -3,3 +3,33 @@ syntax = "proto3";
 option go_package = "Sisconn-raft/raft/transport";
 
 package transport;
+
+service Service {
+    rpc Ping (PingRequest) returns (MessageResponse);
+    rpc Get (KeyedRequest) returns (ValueResponse);
+    rpc Set (KeyValuedRequest) returns (MessageResponse);
+    rpc Strln (KeyedRequest) returns (ValueResponse);
+    rpc Del (KeyedRequest) returns (ValueResponse);
+    rpc Append (KeyValuedRequest) returns (MessageResponse);
+}
+
+message PingRequest {
+    // in case ping can accept parameter in the future
+}
+
+message KeyValuedRequest {
+    string key = 1;
+    string value = 2;
+}
+
+message MessageResponse {
+    string response = 1;
+}
+
+message KeyedRequest {
+    string key = 1;
+}
+
+message ValueResponse {
+    string value = 1;
+}
