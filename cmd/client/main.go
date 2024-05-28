@@ -30,6 +30,7 @@ func main() {
 
 func RunCommandLoop(serverAddress *t.Address) {
 	reader := bufio.NewReader(os.Stdin)
+	setTargetServer(serverAddress)
 
 	for {
 		fmt.Print("Enter command: ")
@@ -41,6 +42,6 @@ func RunCommandLoop(serverAddress *t.Address) {
 
 		input = strings.TrimSpace(input)
 
-		ExecuteCommand(serverAddress, input)
+		ExecuteCommand(input)
 	}
 }

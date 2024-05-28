@@ -9,7 +9,13 @@ import (
 	"strings"
 )
 
-func ExecuteCommand(server *t.Address, input string) {
+var targetServer *t.Address
+
+func setTargetServer(server *t.Address) {
+	targetServer = server
+}
+
+func ExecuteCommand(input string) {
 	args := strings.Fields(input)
 	if len(args) == 0 {
 		return
@@ -20,6 +26,8 @@ func ExecuteCommand(server *t.Address, input string) {
 
 	if err := validateCommand(command, commandArgs); err != nil {
 		fmt.Println(err)
+		fmt.Println()
+		return
 	}
 
 	switch command {
@@ -35,8 +43,10 @@ func ExecuteCommand(server *t.Address, input string) {
 		del(commandArgs)
 	case "append":
 		append(commandArgs)
+	case "request-log":
+		requestLog()
 	case "change-server":
-		changeServer(commandArgs, server)
+		changeServer(commandArgs)
 	case "help":
 		help()
 	case "exit":
@@ -72,6 +82,10 @@ func validateCommand(command string, args []string) error {
 	case "append":
 		if len(args) != 2 {
 			return errors.New("usage: append <key> <value>")
+		}
+	case "request-log":
+		if len(args) != 0 {
+			return errors.New("usage: request-log")
 		}
 	case "change-server":
 		if len(args) != 2 {
@@ -116,17 +130,21 @@ func append(args []string) {
 	// TODO
 }
 
-func changeServer(args []string, server *t.Address) {
+func requestLog() {
+	// TODO
+}
+
+func changeServer(args []string) {
 	host := args[0]
 	port, err := strconv.Atoi(args[1])
-    if err != nil {
+	if err != nil {
 		fmt.Println("Error: invalid server port, port must be an integer")
 		return
-    }
+	}
 
-	server.IP = host
-	server.Port = port
-	fmt.Println("Successfully changing server to", server)
+	targetServer.IP = host
+	targetServer.Port = port
+	fmt.Println("Successfully changing server to", targetServer)
 }
 
 func help() {
@@ -137,6 +155,7 @@ func help() {
 	fmt.Println("strln         : Get the length of a string value associated with a key.")
 	fmt.Println("del           : Delete a key-value pair.")
 	fmt.Println("append        : Append a value to the string value associated with a key.")
+	fmt.Println("request-log   : Change the server address.")
 	fmt.Println("change-server : Change the server address.")
 	fmt.Println("help          : Display available commands and their descriptions.")
 	fmt.Println("exit          : Exit the program.")
@@ -144,5 +163,5 @@ func help() {
 
 func exit() {
 	fmt.Println("Exiting client...")
-	os.Exit(0);
+	os.Exit(0)
 }
