@@ -1,13 +1,15 @@
 package main
 
 import (
+	t "Sisconn-raft/raft/transport"
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
-func ExecuteCommand(input string) {
+func ExecuteCommand(server *t.Address, input string) {
 	args := strings.Fields(input)
 	if len(args) == 0 {
 		return
@@ -33,6 +35,8 @@ func ExecuteCommand(input string) {
 		del(commandArgs)
 	case "append":
 		append(commandArgs)
+	case "change-server":
+		changeServer(commandArgs, server)
 	case "help":
 		help()
 	case "exit":
@@ -68,6 +72,10 @@ func validateCommand(command string, args []string) error {
 	case "append":
 		if len(args) != 2 {
 			return errors.New("usage: append <key> <value>")
+		}
+	case "change-server":
+		if len(args) != 2 {
+			return errors.New("usage: change-server <host> <port>")
 		}
 	case "help":
 		if len(args) != 0 {
@@ -108,16 +116,30 @@ func append(args []string) {
 	// TODO
 }
 
+func changeServer(args []string, server *t.Address) {
+	host := args[0]
+	port, err := strconv.Atoi(args[1])
+    if err != nil {
+		fmt.Println("Error: invalid server port, port must be an integer")
+		return
+    }
+
+	server.IP = host
+	server.Port = port
+	fmt.Println("Successfully changing server to", server)
+}
+
 func help() {
 	fmt.Println("Available commands:")
-	fmt.Println("ping    : Ping the server.")
-	fmt.Println("get     : Get the value associated with a key.")
-	fmt.Println("set     : Set a key-value pair.")
-	fmt.Println("strln   : Get the length of a string value associated with a key.")
-	fmt.Println("del     : Delete a key-value pair.")
-	fmt.Println("append  : Append a value to the string value associated with a key.")
-	fmt.Println("help    : Display available commands and their descriptions.")
-	fmt.Println("exit    : Exit the program.")
+	fmt.Println("ping          : Ping the server.")
+	fmt.Println("get           : Get the value associated with a key.")
+	fmt.Println("set           : Set a key-value pair.")
+	fmt.Println("strln         : Get the length of a string value associated with a key.")
+	fmt.Println("del           : Delete a key-value pair.")
+	fmt.Println("append        : Append a value to the string value associated with a key.")
+	fmt.Println("change-server : Change the server address.")
+	fmt.Println("help          : Display available commands and their descriptions.")
+	fmt.Println("exit          : Exit the program.")
 }
 
 func exit() {

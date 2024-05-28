@@ -18,9 +18,9 @@ func main() {
 	flag.IntVar(&serverInfo.Port, "port", 6969, "Server port that will be used by client, default=6969")
 	flag.Parse()
 
-	server_address := transport.NewAddress(serverInfo.Host, serverInfo.Port)
+	serverAddress := transport.NewAddress(serverInfo.Host, serverInfo.Port)
 
-	fmt.Println("Server started at", &server_address)
+	fmt.Println("Server started at", &serverAddress)
 	
 	// TODO: start server logic
 }

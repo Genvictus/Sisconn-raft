@@ -1,7 +1,7 @@
 package main
 
 import (
-	"Sisconn-raft/raft/transport"
+	t "Sisconn-raft/raft/transport"
 	"bufio"
 	"flag"
 	"fmt"
@@ -20,15 +20,15 @@ func main() {
 	flag.IntVar(&clientInfo.ServerPort, "port", 6969, "Server port for target connection, default=6969")
 	flag.Parse()
 
-	server_address := transport.NewAddress(clientInfo.ServerHost, clientInfo.ServerPort)
+	serverAddress := t.NewAddress(clientInfo.ServerHost, clientInfo.ServerPort)
 
 	fmt.Println("Client Started")
-	fmt.Println("Connecting to server at", &server_address)
+	fmt.Println("Connecting to server at", &serverAddress)
 
-	RunCommandLoop()
+	RunCommandLoop(&serverAddress)
 }
 
-func RunCommandLoop() {
+func RunCommandLoop(serverAddress *t.Address) {
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
@@ -41,6 +41,6 @@ func RunCommandLoop() {
 
 		input = strings.TrimSpace(input)
 
-		ExecuteCommand(input)
+		ExecuteCommand(serverAddress, input)
 	}
 }
