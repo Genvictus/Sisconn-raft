@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -19,7 +20,6 @@ func ExecuteCommand(input string) {
 		fmt.Println(err)
 	}
 
-	fmt.Println()
 	switch command {
 	case "ping":
 		ping()
@@ -39,6 +39,8 @@ func ExecuteCommand(input string) {
 		exit()
 	default:
 	}
+
+	fmt.Println()
 }
 
 func validateCommand(command string, args []string) error {
@@ -107,9 +109,18 @@ func append(args []string) {
 }
 
 func help() {
-	// TODO
+	fmt.Println("Available commands:")
+	fmt.Println("ping    : Ping the server.")
+	fmt.Println("get     : Get the value associated with a key.")
+	fmt.Println("set     : Set a key-value pair.")
+	fmt.Println("strln   : Get the length of a string value associated with a key.")
+	fmt.Println("del     : Delete a key-value pair.")
+	fmt.Println("append  : Append a value to the string value associated with a key.")
+	fmt.Println("help    : Display available commands and their descriptions.")
+	fmt.Println("exit    : Exit the program.")
 }
 
 func exit() {
-	// TODO
+	fmt.Println("Exiting client...")
+	os.Exit(0);
 }
