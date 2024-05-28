@@ -54,55 +54,59 @@ export default function APIManager({
     };
 
     return (
-        <div className="h-full p-4">
-            <h2>Server Configuration</h2>
-            
-            <br />
-
+        <div className="container mx-auto p-4">
+        <h2 className="text-xl font-bold mb-4">Server Configuration</h2>
+    
+        <div className="border rounded p-4 mb-4">
             <InputText name="Server Host:" value={serverHost} setValue={setServerHost} />
-            <br />
             <InputNumber name="Server Port:" value={serverPort} setValue={setServerPort} />
-
-            <br />
-            <br />
-
-            <h2>Commands</h2>
-            <h3></h3>
-            <h3>ping</h3>
-            <ExecuteButton onClick={handlePing} />
-
-            <h3>get</h3>
-            <InputText name="Key" value={getKey} setValue={setGetKey} />
-            <br />
-            <ExecuteButton onClick={handleGet} />
-            
-            <h3>set</h3>
-            <InputText name="Key" value={setKey} setValue={setSetKey} />
-            <br />
-            <InputText name="Value" value={setValue} setValue={setSetValue} />
-            <br />
-            <ExecuteButton onClick={handleSet} />
-
-            <h3>strln</h3>
-            <InputText name="Key" value={strlnKey} setValue={setStrlnKey} />
-            <br />
-            <ExecuteButton onClick={handleStrln} />
-            
-            <h3>del</h3>
-            <InputText name="Key" value={delKey} setValue={setDelKey} />
-            <br />
-            <ExecuteButton onClick={handleDel} />
-            
-            <h3>append</h3>
-            <InputText name="Key" value={appendKey} setValue={setAppendKey} />
-            <br />
-            <InputText name="Value" value={appendValue} setValue={setAppendValue} />
-            <br />
-            <ExecuteButton onClick={handleAppend} />
-
-            <h3>request log</h3>
-            <ExecuteButton onClick={handleRequestLog} />
-
         </div>
+    
+        <h2 className="text-xl font-bold mb-2">Commands</h2>
+    
+        <div className="grid grid-cols-3 gap-4">
+            <div className="border rounded p-4">
+                <h3 className="font-medium mb-2">ping</h3>
+                <ExecuteButton onClick={handlePing} />
+            </div>
+
+            <div className="border rounded p-4">
+                <h3 className="font-medium mb-2">get</h3>
+                <InputText name="Key" value={getKey} setValue={setGetKey} />
+                <ExecuteButton onClick={handleGet} />
+            </div>
+
+            <div className="border rounded p-4">
+                <h3 className="font-medium mb-2">set</h3>
+                <InputText name="Key" value={setKey} setValue={setSetKey} />
+                <InputText name="Value" value={setValue} setValue={setSetValue} />
+                <ExecuteButton onClick={handleSet} />
+            </div>
+
+            <div className="border rounded p-4">
+                <h3 className="font-medium mb-2">strln</h3>
+                <InputText name="Key" value={strlnKey} setValue={setStrlnKey} />
+                <ExecuteButton onClick={handleStrln} />
+            </div>
+
+            <div className="border rounded p-4">
+                <h3 className="font-medium mb-2">del</h3>
+                <InputText name="Key" value={delKey} setValue={setDelKey} />
+                <ExecuteButton onClick={handleDel} />
+            </div>
+
+            <div className="border rounded p-4">
+                <h3 className="font-medium mb-2">append</h3>
+                <InputText name="Key" value={appendKey} setValue={setAppendKey} />
+                <InputText name="Value" value={appendValue} setValue={setAppendValue} />
+                <ExecuteButton onClick={handleAppend} />
+            </div>
+        </div>
+    
+        <div className="border rounded p-4 mt-4">
+            <h3 className="font-medium mb-2">request log</h3>
+            <ExecuteButton onClick={handleRequestLog} />
+        </div>
+    </div>
     );
 }

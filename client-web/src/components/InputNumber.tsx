@@ -11,12 +11,14 @@ export default function InputNumber({
     setValue
 }: InputNumberProps) {
     return (
-        <label>
-            {name}
+        <label className="block mb-2">
+            <span className="mr-2">{name}</span>
             <input
                 type="number"
                 value={value}
-                onChange={(e) => setValue(parseInt(e.target.value))} />
+                onChange={(e) => setValue(parseInt(e.target.value))}
+                className="block w-full rounded-md"
+            />
         </label>
     );
 }

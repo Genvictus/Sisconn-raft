@@ -11,12 +11,14 @@ export default function InputText({
     setValue
 }: InputTextProps) {
     return (
-        <label>
-            {name}
+        <label className="block mb-2">
+            <span className="mr-2">{name}</span>
             <input
                 type="text"
                 value={value}
-                onChange={(e) => setValue(e.target.value)} />
+                onChange={(e) => setValue(e.target.value)}
+                className="block w-full rounded-md"
+            />
         </label>
     );
 }
