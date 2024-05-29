@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-option go_package = "Sisconn-raft/raft/transport";
+option go_package = "Sisconn-raft/raft/raftpc";
 
 import "raft.proto";
 
-package transport.proto;
+// package raftpc.proto;
 
 service RaftService {
     rpc Ping (PingRequest) returns (MessageResponse);
