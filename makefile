@@ -1,3 +1,8 @@
+go-test:
+	IF not exist out (mkdir out)
+	go test ./test/... ./raft ./raft/transport -coverprofile out/coverage -v
+	go tool cover -html out/coverage -o out/coverage.html
+
 raft-service-proto:
 	protoc \
 	--go_out=raft/raftpc --go_opt=paths=source_relative \
