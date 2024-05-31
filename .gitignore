@@ -1,1 +1,6 @@
+*
+!*.*
+# i hate windows binary extension
+*.exe
+
 out/
