@@ -14,13 +14,23 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
-var targetServer *t.Address
-var serviceClient pb.RaftServiceClient
-
 func setTargetServer(server *t.Address) {
+	if conn != nil {
+		conn.Close()
+	}
+
 	targetServer = server
+	conn, err = grpc.NewClient(targetServer.String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return
+	}
+
+	serviceClient = pb.NewRaftServiceClient(conn)
 }
 
 func ExecuteCommand(input string) {
@@ -115,6 +125,8 @@ func validateCommand(command string, args []string) error {
 }
 
 func ping() {
+	fmt.Println("Pinging", targetServer)
+	
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT * time.Millisecond)
 	defer cancel()
 
@@ -159,8 +171,8 @@ func changeServer(args []string) {
 		return
 	}
 
-	targetServer.IP = host
-	targetServer.Port = port
+	newServer := t.NewAddress(host, port)
+	setTargetServer(&newServer)
 	fmt.Println("Successfully changing server to", targetServer)
 }
 

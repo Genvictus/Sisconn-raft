@@ -10,13 +10,19 @@ import (
 	"strings"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 type ClientParserInfo struct {
 	ServerHost string
 	ServerPort int
 }
+
+var (
+	targetServer *t.Address
+	serviceClient pb.RaftServiceClient
+	conn *grpc.ClientConn
+	err error
+)
 
 func main() {
 	var clientInfo ClientParserInfo
@@ -29,20 +35,14 @@ func main() {
 	fmt.Println("Client Started")
 	fmt.Println("Connecting to server at", &serverAddress)
 
-	conn, err := grpc.NewClient(serverAddress.String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return
-	}
+	setTargetServer(&serverAddress)
 	defer conn.Close()
 
-	serviceClient = pb.NewRaftServiceClient(conn)
-
-	RunCommandLoop(&serverAddress)
+	RunCommandLoop()
 }
 
-func RunCommandLoop(serverAddress *t.Address) {
+func RunCommandLoop() {
 	reader := bufio.NewReader(os.Stdin)
-	setTargetServer(serverAddress)
 
 	for {
 		fmt.Print("Enter command: ")
