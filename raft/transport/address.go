@@ -15,6 +15,6 @@ func (a *Address) String() string {
     return fmt.Sprintf("%s:%d", a.IP, a.Port)
 }
 
-func (a Address) Equal(other *Address) bool {
+func (a *Address) Equal(other *Address) bool {
     return a.IP == other.IP && a.Port == other.Port
 }
