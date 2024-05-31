@@ -3,6 +3,7 @@ package main
 import (
 	pb "Sisconn-raft/raft/raftpc"
 	t "Sisconn-raft/raft/transport"
+	"time"
 
 	r "Sisconn-raft/raft"
 
@@ -114,10 +115,10 @@ func validateCommand(command string, args []string) error {
 }
 
 func ping() {
-	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
+	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT * time.Millisecond)
 	defer cancel()
 
-	r, err := (serviceClient).Ping(ctx, &pb.PingRequest{})
+	r, err := serviceClient.Ping(ctx, &pb.PingRequest{})
 	if err != nil {
 		log.Println(err)
 		return

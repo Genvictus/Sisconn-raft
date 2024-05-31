@@ -29,8 +29,7 @@ func main() {
 	fmt.Println("Client Started")
 	fmt.Println("Connecting to server at", &serverAddress)
 
-	conn, err := grpc.NewClient(targetServer.String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	// conn, err := grpc.Dial(targetServer.String()) <- deprecated
+	conn, err := grpc.NewClient(serverAddress.String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return
 	}
