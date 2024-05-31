@@ -1,0 +1,1 @@
+start "Client" go run ./cmd/client/
