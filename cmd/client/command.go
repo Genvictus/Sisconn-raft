@@ -1,15 +1,22 @@
 package main
 
 import (
+	pb "Sisconn-raft/raft/raftpc"
 	t "Sisconn-raft/raft/transport"
+
+	r "Sisconn-raft/raft"
+
+	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
 )
 
 var targetServer *t.Address
+var serviceClient pb.RaftServiceClient
 
 func setTargetServer(server *t.Address) {
 	targetServer = server
@@ -107,7 +114,16 @@ func validateCommand(command string, args []string) error {
 }
 
 func ping() {
-	// TODO
+	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
+	defer cancel()
+
+	r, err := (serviceClient).Ping(ctx, &pb.PingRequest{})
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	fmt.Println(r.GetResponse())
 }
 
 func get(args []string) {

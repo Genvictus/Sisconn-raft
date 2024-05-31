@@ -1,12 +1,16 @@
 package main
 
 import (
+	pb "Sisconn-raft/raft/raftpc"
 	t "Sisconn-raft/raft/transport"
 	"bufio"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type ClientParserInfo struct {
@@ -24,6 +28,15 @@ func main() {
 
 	fmt.Println("Client Started")
 	fmt.Println("Connecting to server at", &serverAddress)
+
+	conn, err := grpc.NewClient(targetServer.String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// conn, err := grpc.Dial(targetServer.String()) <- deprecated
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	serviceClient = pb.NewRaftServiceClient(conn)
 
 	RunCommandLoop(&serverAddress)
 }
