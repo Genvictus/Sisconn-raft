@@ -20,7 +20,7 @@ raft-proto:
 raftpc-proto: raft-service-proto raft-proto
 
 client:
-	go build Sisconn-raft/cmd/client
+	go build -o cmd/client/ Sisconn-raft/cmd/client
 
 server:
-	go build Sisconn-raft/cmd/server
+	go build -o cmd/server/ Sisconn-raft/cmd/server

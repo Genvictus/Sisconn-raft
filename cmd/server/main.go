@@ -1,9 +1,9 @@
 package main
 
 import (
+	"Sisconn-raft/raft"
 	pb "Sisconn-raft/raft/raftpc"
 	"Sisconn-raft/raft/transport"
-	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -16,15 +16,6 @@ import (
 type ServerParserInfo struct {
 	Host string
 	Port int
-}
-
-type server struct {
-	pb.UnimplementedRaftServiceServer
-}
-
-func (s *server) Ping(ctx context.Context, in *pb.PingRequest) (*pb.MessageResponse, error) {
-	fmt.Println("ping received!")
-	return &pb.MessageResponse{Response: "OK"}, nil
 }
 
 func main() {
@@ -46,7 +37,7 @@ func main() {
 
 	s := grpc.NewServer()
 
-	pb.RegisterRaftServiceServer(s, &server{})
+	pb.RegisterRaftServiceServer(s, &raft.ServiceServer{})
 
 	// TODO: start server logic
 
