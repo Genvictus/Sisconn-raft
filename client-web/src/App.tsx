@@ -6,7 +6,7 @@ function App() {
   const [logs, setLogs] = useState('');
   
   const appendLog = (log: string) => {
-    setLogs(logs + '> ' + log + '\n');
+    setLogs(prevLogs => prevLogs + '> ' + log + '\n');
   };
 
   return (
