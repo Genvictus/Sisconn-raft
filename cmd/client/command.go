@@ -3,7 +3,7 @@ package main
 import (
 	pb "Sisconn-raft/raft/raftpc"
 	t "Sisconn-raft/raft/transport"
-	"time"
+	"net/http"
 
 	r "Sisconn-raft/raft"
 
@@ -32,7 +32,7 @@ func setTargetServer(server *t.Address) {
 	serviceClient = pb.NewRaftServiceClient(conn)
 }
 
-func ExecuteCommand(input string) {
+func executeCommand(input string) {
 	args := strings.Fields(input)
 	if len(args) == 0 {
 		return
@@ -64,6 +64,8 @@ func ExecuteCommand(input string) {
 		requestLog()
 	case "change-server":
 		changeServer(commandArgs)
+	case "listen-web":
+		listenWeb(commandArgs)
 	case "help":
 		help()
 	case "exit":
@@ -108,6 +110,10 @@ func validateCommand(command string, args []string) error {
 		if len(args) != 2 {
 			return errors.New("usage: change-server <host> <port>")
 		}
+	case "listen-web":
+		if len(args) != 2 {
+			return errors.New("usage: listen-web <host> <port>")
+		}
 	case "help":
 		if len(args) != 0 {
 			return errors.New("usage: help")
@@ -123,115 +129,123 @@ func validateCommand(command string, args []string) error {
 	return nil
 }
 
-func ping() {
+func ping() string {
 	fmt.Println("Pinging", targetServer)
 
-	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
 	defer cancel()
 
 	r, err := serviceClient.Ping(ctx, &pb.PingRequest{})
 	if err != nil {
 		ClientLogger.Println(err)
-		return
+		return err.Error()
 	}
 
 	fmt.Println(r.GetResponse())
+	return r.GetResponse()
 }
 
-func get(args []string) {
+func get(args []string) string {
 	// TODO
-	fmt.Println("Geting value", targetServer)
+	fmt.Println("Geting value", args[0])
 
-	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
 	defer cancel()
 
 	r, err := serviceClient.Get(ctx, &pb.KeyedRequest{Key: args[0]})
 	if err != nil {
 		ClientLogger.Println(err)
-		return
+		return err.Error()
 	}
 
 	fmt.Println(r.GetValue())
+	return r.GetValue()
 }
 
-func set(args []string) {
+func set(args []string) string {
 	// TODO
-	fmt.Println("Set value", targetServer)
+	fmt.Println("Set value", args[0], "with", args[1])
 
-	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
 	defer cancel()
 
 	r, err := serviceClient.Set(ctx, &pb.KeyValuedRequest{Key: args[0], Value: args[1]})
 	if err != nil {
 		ClientLogger.Println(err)
-		return
+		return err.Error()
 	}
 
 	fmt.Println(r.GetResponse())
+	return r.GetResponse()
 }
 
-func strln(args []string) {
+func strln(args []string) string {
 	// TODO
-	fmt.Println("Strln", targetServer)
+	fmt.Println("Strln", args[0])
 
-	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
 	defer cancel()
 
 	r, err := serviceClient.Strln(ctx, &pb.KeyedRequest{Key: args[0]})
 	if err != nil {
 		ClientLogger.Println(err)
-		return
+		return err.Error()
 	}
 
 	fmt.Println(r.GetValue())
+	return r.GetValue()
 }
 
-func del(args []string) {
+func del(args []string) string {
 	// TODO
-	fmt.Println("Set value", targetServer)
+	fmt.Println("Delete value", args[0])
 
-	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
 	defer cancel()
 
 	r, err := serviceClient.Del(ctx, &pb.KeyedRequest{Key: args[0]})
 	if err != nil {
 		ClientLogger.Println(err)
-		return
+		return err.Error()
 	}
 
 	fmt.Println(r.GetValue())
+	return r.GetValue()
 }
 
-func append(args []string) {
+func append(args []string) string {
 	// TODO
-	fmt.Println("Append value", targetServer)
+	fmt.Println("Append value", args[0], "with", args[1])
 
-	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
 	defer cancel()
 
 	r, err := serviceClient.Append(ctx, &pb.KeyValuedRequest{Key: args[0], Value: args[1]})
 	if err != nil {
 		ClientLogger.Println(err)
-		return
+		return err.Error()
 	}
 
 	fmt.Println(r.GetResponse())
+	return r.GetResponse()
 }
 
-func requestLog() {
+func requestLog() string {
 	// TODO
-	fmt.Println("Req Log", targetServer)
+	fmt.Println("Request Log", targetServer)
 
-	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
 	defer cancel()
 
 	r, err := serviceClient.ReqLog(ctx, &pb.LogRequest{})
 	if err != nil {
 		ClientLogger.Println(err)
-		return
+		return err.Error()
 	}
 
 	fmt.Println(r.GetLogEntries())
+	// TODO print log entries as messages
+	return ""
 }
 
 func changeServer(args []string) {
@@ -247,6 +261,31 @@ func changeServer(args []string) {
 	fmt.Println("Successfully changing server to", targetServer)
 }
 
+func listenWeb(args []string) {
+	host := args[0]
+	port, err := strconv.Atoi(args[1])
+	if err != nil {
+		fmt.Println("Error: invalid server port, port must be an integer")
+		return
+	}
+	address := t.NewAddress(host, port)
+	
+	// TODO: correct HTTP method
+	http.HandleFunc("/ping", loggingMiddleware(handlePing))
+	http.HandleFunc("/get", loggingMiddleware(handleGet))
+	http.HandleFunc("/set", loggingMiddleware(handleSet))
+	http.HandleFunc("/strln", loggingMiddleware(handleStrln))
+	http.HandleFunc("/del", loggingMiddleware(handleDel))
+	http.HandleFunc("/append", loggingMiddleware(handleAppend))
+	http.HandleFunc("/request-log", loggingMiddleware(handleRequestLog))
+
+	fmt.Println("Starting HTTP server on", address)
+	err = http.ListenAndServe(address.String(), nil)
+	if err != nil {
+		fmt.Println("Error starting HTTP server:", err)
+	}
+}
+
 func help() {
 	fmt.Println("Available commands:")
 	fmt.Println("ping          : Ping the server.")
@@ -255,8 +294,9 @@ func help() {
 	fmt.Println("strln         : Get the length of a string value associated with a key.")
 	fmt.Println("del           : Delete a key-value pair.")
 	fmt.Println("append        : Append a value to the string value associated with a key.")
-	fmt.Println("request-log   : Change the server address.")
-	fmt.Println("change-server : Change the server address.")
+	fmt.Println("request-log   : Request the log entries from the server.")
+	fmt.Println("change-server : Change the target server address.")
+	fmt.Println("listen-web    : Change client into web server.")
 	fmt.Println("help          : Display available commands and their descriptions.")
 	fmt.Println("exit          : Exit the program.")
 }

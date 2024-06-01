@@ -40,22 +40,47 @@ type keyValueReplication struct {
 	replicatedState map[string]string
 }
 
-func (k *keyValueReplication) replayLog(startIndex uint64, lastIndex uint64) {
-	for i := startIndex; i <= lastIndex; i++ {
-		k.replicatedState[k.logEntries[i].key] = k.logEntries[i].value
+func newKeyValueReplication() keyValueReplication {
+	return keyValueReplication{
+		commitIndex: 0,
+		lastApplied: 0,
+
+		replicatedState: map[string]string{},
 	}
 }
 
+func (k *keyValueReplication) replayLog(startIndex uint64, lastIndex uint64) {
+	k.logLock.RLock()
+	for i := startIndex; i <= lastIndex; i++ {
+		k.replicatedState[k.logEntries[i].key] = k.logEntries[i].value
+	}
+
+	k.logLock.RUnlock()
+}
+
 func (k *keyValueReplication) appendLog(term uint64, key string, value string) {
+	k.indexLock.Lock()
+	k.logLock.Lock()
+
 	k.logEntries = append(k.logEntries, keyValueReplicationEntry{term: term, key: key, value: value})
 	if k.replicatedState == nil {
 		k.replicatedState = map[string]string{}
 	}
 	k.replicatedState[key] = value
+
+	k.indexLock.Unlock()
+	k.logLock.Unlock()
 }
 
 func (k *keyValueReplication) replaceLog(startIndex uint64, logEntries []keyValueReplicationEntry) {
+	k.indexLock.Lock()
+	k.logLock.Lock()
+
 	k.logEntries = append(k.logEntries[:startIndex], logEntries...)
+
+	k.indexLock.Unlock()
+	k.logLock.Unlock()
+
 	k.replicatedState = map[string]string{}
 	k.replayLog(0, uint64(len(k.logEntries))-1)
 }

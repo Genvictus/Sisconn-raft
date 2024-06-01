@@ -20,6 +20,7 @@ type ServerParserInfo struct {
 
 var ServerLogger *log.Logger
 var ServerVerboseLogger *log.Logger
+var RaftNode *raft.RaftNode
 
 func main() {
 	var serverInfo ServerParserInfo
@@ -45,10 +46,9 @@ func main() {
 		grpc.UnaryInterceptor(transport.LoggingInterceptorServer(ServerLogger)),
 	)
 
-	var node raft.RaftNode
-	pb.RegisterRaftServiceServer(s, &raft.ServiceServer{Server: &node})
-
-	// TODO: start server logic
+	RaftNode = raft.NewNode(serverAddressStr)
+	pb.RegisterRaftServiceServer(s, &raft.ServiceServer{Server: RaftNode})
+	pb.RegisterRaftServer(s, &raft.RaftServer{Server: RaftNode})
 
 	s.Serve(lis)
 }
