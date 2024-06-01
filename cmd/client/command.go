@@ -146,7 +146,7 @@ func get(args []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
 	defer cancel()
 
-	r, err := serviceClient.Get(ctx, &pb.KeyedRequest{})
+	r, err := serviceClient.Get(ctx, &pb.KeyedRequest{Key: args[0]})
 	if err != nil {
 		log.Println(err)
 		return
@@ -162,7 +162,7 @@ func set(args []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
 	defer cancel()
 
-	r, err := serviceClient.Set(ctx, &pb.KeyValuedRequest{})
+	r, err := serviceClient.Set(ctx, &pb.KeyValuedRequest{Key: args[0], Value: args[1]})
 	if err != nil {
 		log.Println(err)
 		return
@@ -178,7 +178,7 @@ func strln(args []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
 	defer cancel()
 
-	r, err := serviceClient.Strln(ctx, &pb.KeyedRequest{})
+	r, err := serviceClient.Strln(ctx, &pb.KeyedRequest{Key: args[0]})
 	if err != nil {
 		log.Println(err)
 		return
@@ -194,7 +194,7 @@ func del(args []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
 	defer cancel()
 
-	r, err := serviceClient.Del(ctx, &pb.KeyedRequest{})
+	r, err := serviceClient.Del(ctx, &pb.KeyedRequest{Key: args[0]})
 	if err != nil {
 		log.Println(err)
 		return
@@ -210,7 +210,7 @@ func append(args []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
 	defer cancel()
 
-	r, err := serviceClient.Append(ctx, &pb.KeyValuedRequest{})
+	r, err := serviceClient.Append(ctx, &pb.KeyValuedRequest{Key: args[0], Value: args[1]})
 	if err != nil {
 		log.Println(err)
 		return
