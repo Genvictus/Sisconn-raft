@@ -1,6 +1,8 @@
 package raft
 
-import "sync"
+import (
+	"sync"
+)
 
 type keyValuelogPlayer interface {
 	// modify accordingly
@@ -10,6 +12,7 @@ type keyValuelogPlayer interface {
 
 	// Append a new entry to the log, and then play the appended log entry
 	appendLog(term uint64, key string, value string)
+	appendMultipleLog(term uint64, entries []TransactionEntry)
 
 	// Replace the log's entry starting from the startIndex
 	// (rolling back the state as well), then append the new entries
@@ -40,6 +43,12 @@ type keyValueReplication struct {
 	replicatedState map[string]string
 }
 
+type TransactionEntry struct {
+	command string
+	key     string
+	value   string
+}
+
 func newKeyValueReplication() keyValueReplication {
 	return keyValueReplication{
 		commitIndex: 0,
@@ -67,6 +76,28 @@ func (k *keyValueReplication) appendLog(term uint64, key string, value string) {
 		k.replicatedState = map[string]string{}
 	}
 	k.replicatedState[key] = value
+
+	k.indexLock.Unlock()
+	k.logLock.Unlock()
+}
+
+func (k *keyValueReplication) appendMultipleLog(term uint64, entries []TransactionEntry) {
+	k.indexLock.Lock()
+	k.logLock.Lock()
+
+	if k.replicatedState == nil {
+		k.replicatedState = map[string]string{}
+	}
+	for _, entry := range entries {
+		newval := k.get(entry.key)
+		if entry.command == "append" {
+			newval = newval + entry.value
+		} else {
+			newval = entry.value
+		}
+		k.logEntries = append(k.logEntries, keyValueReplicationEntry{term: term, key: entry.key, value: newval})
+		k.replicatedState[entry.key] = newval
+	}
 
 	k.indexLock.Unlock()
 	k.logLock.Unlock()

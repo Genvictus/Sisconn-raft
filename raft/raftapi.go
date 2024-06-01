@@ -62,6 +62,17 @@ func (s *ServiceServer) ReqLog(ctx context.Context, in *pb.LogRequest) (*pb.LogR
 	return &pb.LogResponse{LogEntries: logEntries}, nil
 }
 
+func (s *ServiceServer) Commit(ctx context.Context, in *pb.CommitRequest) (*pb.MessageResponse, error) {
+	log.Println("commit")
+	var entries []TransactionEntry
+	for _, entry := range in.CommitEntries {
+		log.Println(entry.Type)
+		entries = append(entries, TransactionEntry{command: entry.Type, key: entry.Key, value: entry.Value})
+	}
+	s.Server.log.appendMultipleLog(s.Server.currentTerm, entries)
+	return &pb.MessageResponse{Response: "OK (" + strconv.Itoa(len(entries)) + " commands executed)"}, nil
+}
+
 func (s *ServiceServer) AddNode(ctx context.Context, in *pb.KeyValuedRequest) (*pb.MessageResponse, error) {
 	log.Println("add node")
 	return &pb.MessageResponse{Response: "Not Implemented"}, nil
