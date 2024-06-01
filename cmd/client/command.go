@@ -306,13 +306,32 @@ func Commit() string {
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
 	defer cancel()
 
-	log.Println("buat ctx ga error", ctx)
+	var commitEntries []*pb.CommitEntry
+	for _, transaction := range TransactionList {
+		commitEntries = append(commitEntries, &pb.CommitEntry{
+			Type:  transaction.Operation,
+			Key:   transaction.Key,
+			Value: transaction.Value,
+		})
+	}
 
-	log.Println("batch exe: ", TransactionList)
+	r, err := serviceClient.Commit(ctx, &pb.CommitRequest{
+		CommitEntries: commitEntries,
+	})
+
+	if err != nil {
+		ClientLogger.Println(err)
+		return err.Error()
+	}
+
+	// log.Println("buat ctx ga error", ctx)
+
+	// log.Println("batch exe: ", TransactionList)
 	TransactionList = nil
 	IsTransactionStart = false
 
-	return "response"
+	log.Println(r.GetResponse())
+	return r.GetResponse()
 }
 
 func requestLog() string {
@@ -373,16 +392,18 @@ func listenWeb(args []string) {
 
 func help() {
 	fmt.Println("Available commands:")
-	fmt.Println("ping          : Ping the server.")
-	fmt.Println("get           : Get the value associated with a key.")
-	fmt.Println("set           : Set a key-value pair.")
-	fmt.Println("strln         : Get the length of a string value associated with a key.")
-	fmt.Println("del           : Delete a key-value pair.")
-	fmt.Println("append        : Append a value to the string value associated with a key.")
-	fmt.Println("request-log   : Request the log entries from the server.")
-	fmt.Println("change-server : Change the target server address.")
-	fmt.Println("listen-web    : Change client into web server.")
-	fmt.Println("help          : Display available commands and their descriptions.")
+	fmt.Println("ping          	: Ping the server.")
+	fmt.Println("get           	: Get the value associated with a key.")
+	fmt.Println("set           	: Set a key-value pair.")
+	fmt.Println("strln         	: Get the length of a string value associated with a key.")
+	fmt.Println("del           	: Delete a key-value pair.")
+	fmt.Println("append        	: Append a value to the string value associated with a key.")
+	fmt.Println("request-log   	: Request the log entries from the server.")
+	fmt.Println("change-server 	: Change the target server address.")
+	fmt.Println("listen-web    	: Change client into web server.")
+	fmt.Println("help          	: Display available commands and their descriptions.")
+	fmt.Println("start			: Start batch transaction")
+	fmt.Println("commit			: Commit and execute batch transaction")
 	fmt.Println("exit          : Exit the program.")
 }
 
