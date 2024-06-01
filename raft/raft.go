@@ -47,4 +47,5 @@ type commited struct {
 type raftNode struct {
 	conn       *grpc.ClientConn
 	raftClient *pb.RaftClient
+	raftState
 }
