@@ -40,6 +40,15 @@ type keyValueReplication struct {
 	replicatedState map[string]string
 }
 
+func newKeyValueReplication() keyValueReplication {
+	return keyValueReplication{
+		commitIndex: 0,
+		lastApplied: 0,
+
+		replicatedState: map[string]string{},
+	}
+}
+
 func (k *keyValueReplication) replayLog(startIndex uint64, lastIndex uint64) {
 	for i := startIndex; i <= lastIndex; i++ {
 		k.replicatedState[k.logEntries[i].key] = k.logEntries[i].value
