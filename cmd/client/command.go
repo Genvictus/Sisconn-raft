@@ -3,6 +3,7 @@ package main
 import (
 	pb "Sisconn-raft/raft/raftpc"
 	t "Sisconn-raft/raft/transport"
+	"log"
 	"net/http"
 
 	r "Sisconn-raft/raft"
@@ -17,6 +18,16 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
+
+var IsTransactionStart bool = false
+
+type Transaction struct {
+	Operation string
+	Key       string
+	Value     string
+}
+
+var TransactionList []Transaction
 
 func setTargetServer(server *t.Address) {
 	if conn != nil {
@@ -48,6 +59,8 @@ func executeCommand(input string) {
 	}
 
 	switch command {
+	case "start":
+		start()
 	case "ping":
 		ping()
 	case "get":
@@ -59,7 +72,7 @@ func executeCommand(input string) {
 	case "del":
 		del(commandArgs)
 	case "append":
-		append(commandArgs)
+		Append(commandArgs)
 	case "request-log":
 		requestLog()
 	case "change-server":
@@ -70,6 +83,8 @@ func executeCommand(input string) {
 		help()
 	case "exit":
 		exit()
+	case "commit":
+		Commit()
 	default:
 	}
 
@@ -78,6 +93,10 @@ func executeCommand(input string) {
 
 func validateCommand(command string, args []string) error {
 	switch command {
+	case "start":
+		if IsTransactionStart {
+			return errors.New("transaction already start")
+		}
 	case "ping":
 		if len(args) != 0 {
 			return errors.New("usage: ping")
@@ -122,6 +141,10 @@ func validateCommand(command string, args []string) error {
 		if len(args) != 0 {
 			return errors.New("usage: exit")
 		}
+	case "commit":
+		if !IsTransactionStart {
+			return errors.New("cant use commit")
+		}
 	default:
 		return errors.New("unknown command: " + command)
 	}
@@ -129,7 +152,22 @@ func validateCommand(command string, args []string) error {
 	return nil
 }
 
+func start() {
+	IsTransactionStart = true
+	log.Println("Start Transaction Batch")
+}
+
 func ping() string {
+	if IsTransactionStart {
+		transaction := Transaction{
+			Operation: "ping",
+			Key:       "",
+			Value:     "",
+		}
+
+		TransactionList = append(TransactionList, transaction)
+		return ""
+	}
 	fmt.Println("Pinging", targetServer)
 
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
@@ -164,6 +202,16 @@ func get(args []string) string {
 
 func set(args []string) string {
 	// TODO
+	if IsTransactionStart {
+		transaction := Transaction{
+			Operation: "set",
+			Key:       args[0],
+			Value:     args[1],
+		}
+
+		TransactionList = append(TransactionList, transaction)
+		return ""
+	}
 	fmt.Println("Set value", args[0], "with", args[1])
 
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
@@ -198,6 +246,17 @@ func strln(args []string) string {
 
 func del(args []string) string {
 	// TODO
+	if IsTransactionStart {
+		transaction := Transaction{
+			Operation: "del",
+			Key:       args[0],
+			Value:     "",
+		}
+
+		TransactionList = append(TransactionList, transaction)
+		return ""
+	}
+
 	fmt.Println("Delete value", args[0])
 
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
@@ -213,8 +272,19 @@ func del(args []string) string {
 	return r.GetValue()
 }
 
-func append(args []string) string {
+func Append(args []string) string {
 	// TODO
+	if IsTransactionStart {
+		transaction := Transaction{
+			Operation: "append",
+			Key:       args[0],
+			Value:     args[1],
+		}
+
+		TransactionList = append(TransactionList, transaction)
+		return ""
+	}
+
 	fmt.Println("Append value", args[0], "with", args[1])
 
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
@@ -228,6 +298,21 @@ func append(args []string) string {
 
 	fmt.Println(r.GetResponse())
 	return r.GetResponse()
+}
+
+func Commit() string {
+	fmt.Println("executing transaction batch")
+
+	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
+	defer cancel()
+
+	log.Println("buat ctx ga error", ctx)
+
+	log.Println("batch exe: ", TransactionList)
+	TransactionList = nil
+	IsTransactionStart = false
+
+	return "response"
 }
 
 func requestLog() string {
@@ -269,7 +354,7 @@ func listenWeb(args []string) {
 		return
 	}
 	address := t.NewAddress(host, port)
-	
+
 	// TODO: correct HTTP method
 	http.HandleFunc("/ping", loggingMiddleware(handlePing))
 	http.HandleFunc("/get", loggingMiddleware(handleGet))
