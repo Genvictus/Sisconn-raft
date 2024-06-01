@@ -126,8 +126,8 @@ func validateCommand(command string, args []string) error {
 
 func ping() {
 	fmt.Println("Pinging", targetServer)
-	
-	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT * time.Millisecond)
+
+	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
 	defer cancel()
 
 	r, err := serviceClient.Ping(ctx, &pb.PingRequest{})
@@ -141,26 +141,98 @@ func ping() {
 
 func get(args []string) {
 	// TODO
+	fmt.Println("Geting value", targetServer)
+
+	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
+	defer cancel()
+
+	r, err := serviceClient.Get(ctx, &pb.KeyedRequest{})
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	fmt.Println(r.GetValue())
 }
 
 func set(args []string) {
 	// TODO
+	fmt.Println("Set value", targetServer)
+
+	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
+	defer cancel()
+
+	r, err := serviceClient.Set(ctx, &pb.KeyValuedRequest{})
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	fmt.Println(r.GetResponse())
 }
 
 func strln(args []string) {
 	// TODO
+	fmt.Println("Strln", targetServer)
+
+	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
+	defer cancel()
+
+	r, err := serviceClient.Strln(ctx, &pb.KeyedRequest{})
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	fmt.Println(r.GetValue())
 }
 
 func del(args []string) {
 	// TODO
+	fmt.Println("Set value", targetServer)
+
+	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
+	defer cancel()
+
+	r, err := serviceClient.Del(ctx, &pb.KeyedRequest{})
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	fmt.Println(r.GetValue())
 }
 
 func append(args []string) {
 	// TODO
+	fmt.Println("Append value", targetServer)
+
+	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
+	defer cancel()
+
+	r, err := serviceClient.Append(ctx, &pb.KeyValuedRequest{})
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	fmt.Println(r.GetResponse())
 }
 
 func requestLog() {
 	// TODO
+	fmt.Println("Req Log", targetServer)
+
+	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
+	defer cancel()
+
+	r, err := serviceClient.ReqLog(ctx, &pb.LogRequest{})
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	fmt.Println(r.GetLogEntries())
 }
 
 func changeServer(args []string) {
