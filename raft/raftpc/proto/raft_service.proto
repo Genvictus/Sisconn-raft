@@ -13,6 +13,7 @@ service RaftService {
     rpc Strln (KeyedRequest) returns (ValueResponse);
     rpc Del (KeyedRequest) returns (ValueResponse);
     rpc Append (KeyValuedRequest) returns (MessageResponse);
+    rpc Commit (CommitRequest) returns (MessageResponse);
 
     rpc ReqLog (LogRequest) returns (LogResponse);
 
@@ -47,4 +48,14 @@ message LogRequest {
 
 message LogResponse {
     repeated LogEntry logEntries = 1;
+}
+
+message CommitEntry {
+    string type = 1;
+    string key = 2;
+    string value = 3;
+}
+
+message CommitRequest {
+    repeated CommitEntry commitEntries = 1;
 }
