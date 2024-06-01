@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -18,10 +19,12 @@ type ClientParserInfo struct {
 }
 
 var (
-	targetServer *t.Address
-	serviceClient pb.RaftServiceClient
-	conn *grpc.ClientConn
-	err error
+	targetServer        *t.Address
+	serviceClient       pb.RaftServiceClient
+	conn                *grpc.ClientConn
+	err                 error
+	ClientLogger        *log.Logger
+	ClientVerboseLogger *log.Logger
 )
 
 func main() {
@@ -32,8 +35,12 @@ func main() {
 
 	serverAddress := t.NewAddress(clientInfo.ServerHost, clientInfo.ServerPort)
 
-	fmt.Println("Client Started")
-	fmt.Println("Connecting to server at", &serverAddress)
+	ClientLogger = log.New(os.Stdout, "[Raft] Client: ", 0)
+
+	t.LogPrint(ClientLogger, "Client started")
+	t.LogPrint(ClientLogger, fmt.Sprintf("Connecting to server at %s", serverAddress.String()))
+	// fmt.Println("Client Started")
+	// fmt.Println("Connecting to server at", &serverAddress)
 
 	setTargetServer(&serverAddress)
 	defer conn.Close()

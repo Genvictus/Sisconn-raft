@@ -5,9 +5,9 @@ import (
 	pb "Sisconn-raft/raft/raftpc"
 	"Sisconn-raft/raft/transport"
 	"flag"
-	"fmt"
 	"log"
 	"net"
+	"os"
 
 	"google.golang.org/grpc"
 )
@@ -18,6 +18,9 @@ type ServerParserInfo struct {
 	Port int
 }
 
+var ServerLogger *log.Logger
+var ServerVerboseLogger *log.Logger
+
 func main() {
 	var serverInfo ServerParserInfo
 	flag.StringVar(&serverInfo.Host, "host", "localhost", "Server hostname that will be used by client, default=localhost")
@@ -26,16 +29,21 @@ func main() {
 
 	serverAddress := transport.NewAddress(serverInfo.Host, serverInfo.Port)
 
-	fmt.Println("Server started at", &serverAddress)
+	ServerLogger = log.New(os.Stdout, "[Raft] Server: ", 0)
+
+	transport.LogPrint(ServerLogger, "Server started")
+	// fmt.Println("Server started at", &serverAddress)
 
 	serverAddressStr := serverAddress.String()
 	lis, err := net.Listen("tcp", serverAddressStr)
 
 	if err != nil {
-		log.Fatalf("failed to listen on %s", serverAddressStr)
+		ServerLogger.Fatalf("failed to listen on %s", serverAddressStr)
 	}
 
-	s := grpc.NewServer()
+	s := grpc.NewServer(
+		grpc.UnaryInterceptor(transport.LoggingInterceptorServer(ServerLogger)),
+	)
 
 	pb.RegisterRaftServiceServer(s, &raft.ServiceServer{})
 

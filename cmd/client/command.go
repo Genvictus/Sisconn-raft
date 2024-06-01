@@ -10,7 +10,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -25,7 +24,7 @@ func setTargetServer(server *t.Address) {
 	}
 
 	targetServer = server
-	conn, err = grpc.NewClient(targetServer.String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err = grpc.NewClient(targetServer.String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(t.LoggingInterceptorClient(ClientLogger)))
 	if err != nil {
 		return
 	}
@@ -132,7 +131,7 @@ func ping() {
 
 	r, err := serviceClient.Ping(ctx, &pb.PingRequest{})
 	if err != nil {
-		log.Println(err)
+		ClientLogger.Println(err)
 		return
 	}
 
@@ -148,7 +147,7 @@ func get(args []string) {
 
 	r, err := serviceClient.Get(ctx, &pb.KeyedRequest{Key: args[0]})
 	if err != nil {
-		log.Println(err)
+		ClientLogger.Println(err)
 		return
 	}
 
@@ -164,7 +163,7 @@ func set(args []string) {
 
 	r, err := serviceClient.Set(ctx, &pb.KeyValuedRequest{Key: args[0], Value: args[1]})
 	if err != nil {
-		log.Println(err)
+		ClientLogger.Println(err)
 		return
 	}
 
@@ -180,7 +179,7 @@ func strln(args []string) {
 
 	r, err := serviceClient.Strln(ctx, &pb.KeyedRequest{Key: args[0]})
 	if err != nil {
-		log.Println(err)
+		ClientLogger.Println(err)
 		return
 	}
 
@@ -196,7 +195,7 @@ func del(args []string) {
 
 	r, err := serviceClient.Del(ctx, &pb.KeyedRequest{Key: args[0]})
 	if err != nil {
-		log.Println(err)
+		ClientLogger.Println(err)
 		return
 	}
 
@@ -212,7 +211,7 @@ func append(args []string) {
 
 	r, err := serviceClient.Append(ctx, &pb.KeyValuedRequest{Key: args[0], Value: args[1]})
 	if err != nil {
-		log.Println(err)
+		ClientLogger.Println(err)
 		return
 	}
 
@@ -228,7 +227,7 @@ func requestLog() {
 
 	r, err := serviceClient.ReqLog(ctx, &pb.LogRequest{})
 	if err != nil {
-		log.Println(err)
+		ClientLogger.Println(err)
 		return
 	}
 
