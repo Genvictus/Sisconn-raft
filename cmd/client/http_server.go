@@ -101,7 +101,7 @@ func handleAppend(w http.ResponseWriter, r *http.Request) {
     key := r.Form.Get("key")
     value := r.Form.Get("value")
 
-    message, _ := json.Marshal(append([]string{key, value}))
+    message, _ := json.Marshal(Append([]string{key, value}))
 
     w.WriteHeader(http.StatusOK)
     w.Write(message)
