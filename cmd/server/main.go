@@ -45,7 +45,8 @@ func main() {
 		grpc.UnaryInterceptor(transport.LoggingInterceptorServer(ServerLogger)),
 	)
 
-	pb.RegisterRaftServiceServer(s, &raft.ServiceServer{})
+	var node raft.RaftNode
+	pb.RegisterRaftServiceServer(s, &raft.ServiceServer{Server: &node})
 
 	// TODO: start server logic
 

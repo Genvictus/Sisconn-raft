@@ -12,7 +12,7 @@ import (
 
 type ServiceServer struct {
 	pb.UnimplementedRaftServiceServer
-	server raftNode
+	Server *RaftNode
 }
 
 func (s *ServiceServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.MessageResponse, error) {
@@ -24,32 +24,40 @@ func (s *ServiceServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.Messa
 
 func (s *ServiceServer) Get(ctx context.Context, in *pb.KeyedRequest) (*pb.ValueResponse, error) {
 	log.Println("get key:", in.Key)
-	return &pb.ValueResponse{Value: "1"}, nil
+	log.Println(s.Server.log.replicatedState)
+	return &pb.ValueResponse{Value: s.Server.log.get(in.Key)}, nil
 }
 
 func (s *ServiceServer) Set(ctx context.Context, in *pb.KeyValuedRequest) (*pb.MessageResponse, error) {
 	log.Println("set key:", in.Key, "with value:", in.Value)
+	s.Server.log.appendLog(s.Server.currentTerm, in.Key, in.Value)
 	return &pb.MessageResponse{Response: "OK"}, nil
 }
 
 func (s *ServiceServer) Strln(ctx context.Context, in *pb.KeyedRequest) (*pb.ValueResponse, error) {
 	log.Println("get strln for key:", in.Key)
-	return &pb.ValueResponse{Value: "1"}, nil
+	return &pb.ValueResponse{Value: string(len(s.Server.log.get(in.Key)))}, nil
 }
 
 func (s *ServiceServer) Del(ctx context.Context, in *pb.KeyedRequest) (*pb.ValueResponse, error) {
 	log.Println("del key:", in.Key)
-	return &pb.ValueResponse{Value: "1"}, nil
+	val := s.Server.log.get(in.Key)
+	s.Server.log.appendLog(s.Server.currentTerm, in.Key, "")
+	return &pb.ValueResponse{Value: val}, nil
 }
 
 func (s *ServiceServer) Append(ctx context.Context, in *pb.KeyValuedRequest) (*pb.MessageResponse, error) {
 	log.Println("append key:", in.Key, "with", in.Value)
+	s.Server.log.appendLog(s.Server.currentTerm, in.Key, s.Server.log.get(in.Key)+in.Value)
 	return &pb.MessageResponse{Response: "OK"}, nil
 }
 
 func (s *ServiceServer) ReqLog(ctx context.Context, in *pb.LogRequest) (*pb.LogResponse, error) {
 	log.Println("request log")
 	var logEntries []*pb.LogEntry
+	for _, log := range s.Server.log.logEntries {
+		logEntries = append(logEntries, &pb.LogEntry{Term: log.term, Key: log.key, Value: log.value})
+	}
 	return &pb.LogResponse{LogEntries: logEntries}, nil
 }
 
@@ -71,7 +79,7 @@ func (s *ServiceServer) RemoveNode(ctx context.Context, in *pb.KeyedRequest) (*p
 
 type RaftServer struct {
 	pb.UnimplementedRaftServer
-	server raftNode
+	Server *RaftNode
 }
 
 // TODO: implement raft protocol RPCs

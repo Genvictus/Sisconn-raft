@@ -58,10 +58,10 @@ func (r *RaftNode) AddConnections(targets []*transport.Address) {
 	}
 }
 
-func (r *RaftNode) appendEntries() error {
+func (r *RaftNode) appendEntries() {
 	// TODO
 }
 
-func (r *RaftNode) heartBeat() error {
+func (r *RaftNode) heartBeat() {
 	// TODO
 }
