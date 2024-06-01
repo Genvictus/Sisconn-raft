@@ -12,6 +12,7 @@ import (
 
 type ServiceServer struct {
 	pb.UnimplementedRaftServiceServer
+	server raftNode
 }
 
 func (s *ServiceServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.MessageResponse, error) {
@@ -70,6 +71,7 @@ func (s *ServiceServer) RemoveNode(ctx context.Context, in *pb.KeyedRequest) (*p
 
 type RaftServer struct {
 	pb.UnimplementedRaftServer
+	server raftNode
 }
 
 // TODO: implement raft protocol RPCs
