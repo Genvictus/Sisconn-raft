@@ -140,7 +140,7 @@ func ping() {
 
 func get(args []string) {
 	// TODO
-	fmt.Println("Geting value", targetServer)
+	fmt.Println("Geting value", args[0])
 
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
 	defer cancel()
@@ -156,7 +156,7 @@ func get(args []string) {
 
 func set(args []string) {
 	// TODO
-	fmt.Println("Set value", targetServer)
+	fmt.Println("Set value", args[0], "with", args[1])
 
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
 	defer cancel()
@@ -172,7 +172,7 @@ func set(args []string) {
 
 func strln(args []string) {
 	// TODO
-	fmt.Println("Strln", targetServer)
+	fmt.Println("Strln", args[0])
 
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
 	defer cancel()
@@ -188,7 +188,7 @@ func strln(args []string) {
 
 func del(args []string) {
 	// TODO
-	fmt.Println("Set value", targetServer)
+	fmt.Println("Delete value", args[0])
 
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
 	defer cancel()
@@ -204,7 +204,7 @@ func del(args []string) {
 
 func append(args []string) {
 	// TODO
-	fmt.Println("Append value", targetServer)
+	fmt.Println("Append value", args[0], "with", args[1])
 
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
 	defer cancel()
@@ -220,7 +220,7 @@ func append(args []string) {
 
 func requestLog() {
 	// TODO
-	fmt.Println("Req Log", targetServer)
+	fmt.Println("Request Log", targetServer)
 
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT*time.Millisecond)
 	defer cancel()
