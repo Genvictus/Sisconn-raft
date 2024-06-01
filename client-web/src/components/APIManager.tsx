@@ -40,7 +40,16 @@ export default function APIManager({
     };
 
     const handleGet = () => {
-        // TODO
+        appendLog(`Get ${getKey}`);
+        axios.get(`${serverAddress}/get`, {
+            params: {
+                key: getKey,
+            }
+        }).then((response) => {
+            appendLog(response.data);
+        }).catch((error: AxiosError) => {
+            appendLog(error.message);
+        });
     };
 
     const handleSet = () => {
@@ -55,23 +64,55 @@ export default function APIManager({
         }).catch((error: AxiosError) => {
             appendLog(error.message);
         });
-
     };
 
     const handleStrln = () => {
-        // TODO
+        appendLog(`Strln ${strlnKey}`);
+        axios.get(`${serverAddress}/strln`, {
+            params: {
+                key: strlnKey,
+            }
+        }).then((response) => {
+            appendLog(response.data);
+        }).catch((error: AxiosError) => {
+            appendLog(error.message);
+        });
     };
 
     const handleDel = () => {
-        // TODO
+        appendLog(`Del ${delKey}`);
+        axios.get(`${serverAddress}/del`, {
+            params: {
+                key: delKey,
+            }
+        }).then((response) => {
+            appendLog(response.data);
+        }).catch((error: AxiosError) => {
+            appendLog(error.message);
+        });
     };
 
     const handleAppend = () => {
-        // TODO
+        appendLog(`Append ${appendKey} ${appendValue}`);
+        axios.get(`${serverAddress}/append`, {
+            params: {
+                key: appendKey,
+                value: appendValue
+            }
+        }).then((response) => {
+            appendLog(response.data);
+        }).catch((error: AxiosError) => {
+            appendLog(error.message);
+        });
     };
 
     const handleRequestLog = () => {
-        // TODO
+        appendLog(`Requesting Log`);
+        axios.get(`${serverAddress}/request-Log`).then((response) => {
+            appendLog(response.data);
+        }).catch((error: AxiosError) => {
+            appendLog(error.message);
+        });
     };
 
     return (

@@ -42,7 +42,7 @@ func main() {
 	// fmt.Println("Client Started")
 	// fmt.Println("Connecting to server at", &serverAddress)
 
-	SetTargetServer(&serverAddress)
+	setTargetServer(&serverAddress)
 	defer conn.Close()
 
 	RunCommandLoop()
@@ -61,6 +61,6 @@ func RunCommandLoop() {
 
 		input = strings.TrimSpace(input)
 
-		ExecuteCommand(input)
+		executeCommand(input)
 	}
 }
