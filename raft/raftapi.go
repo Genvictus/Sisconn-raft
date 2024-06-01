@@ -4,6 +4,7 @@ import (
 	pb "Sisconn-raft/raft/raftpc"
 	"context"
 	"log"
+	"strconv"
 )
 
 /*
@@ -36,7 +37,7 @@ func (s *ServiceServer) Set(ctx context.Context, in *pb.KeyValuedRequest) (*pb.M
 
 func (s *ServiceServer) Strln(ctx context.Context, in *pb.KeyedRequest) (*pb.ValueResponse, error) {
 	log.Println("get strln for key:", in.Key)
-	return &pb.ValueResponse{Value: string(len(s.Server.log.get(in.Key)))}, nil
+	return &pb.ValueResponse{Value: strconv.Itoa(len(s.Server.log.get(in.Key)))}, nil
 }
 
 func (s *ServiceServer) Del(ctx context.Context, in *pb.KeyedRequest) (*pb.ValueResponse, error) {

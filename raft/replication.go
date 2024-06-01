@@ -48,6 +48,9 @@ func (k *keyValueReplication) replayLog(startIndex uint64, lastIndex uint64) {
 
 func (k *keyValueReplication) appendLog(term uint64, key string, value string) {
 	k.logEntries = append(k.logEntries, keyValueReplicationEntry{term: term, key: key, value: value})
+	if k.replicatedState == nil {
+		k.replicatedState = map[string]string{}
+	}
 	k.replicatedState[key] = value
 }
 
