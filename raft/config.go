@@ -7,3 +7,8 @@ const (
 	MembershipLog = iota
 	DataLog
 )
+
+const (
+	NodeActive   = "active"
+	NodeInactive = "inactive"
+)
