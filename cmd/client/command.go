@@ -3,6 +3,7 @@ package main
 import (
 	pb "Sisconn-raft/raft/raftpc"
 	t "Sisconn-raft/raft/transport"
+	"net/http"
 
 	r "Sisconn-raft/raft"
 
@@ -17,7 +18,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func setTargetServer(server *t.Address) {
+func SetTargetServer(server *t.Address) {
 	if conn != nil {
 		conn.Close()
 	}
@@ -40,7 +41,7 @@ func ExecuteCommand(input string) {
 	command := args[0]
 	commandArgs := args[1:]
 
-	if err := validateCommand(command, commandArgs); err != nil {
+	if err := ValidateCommand(command, commandArgs); err != nil {
 		fmt.Println(err)
 		fmt.Println()
 		return
@@ -48,32 +49,34 @@ func ExecuteCommand(input string) {
 
 	switch command {
 	case "ping":
-		ping()
+		Ping()
 	case "get":
-		get(commandArgs)
+		Get(commandArgs)
 	case "set":
-		set(commandArgs)
+		Set(commandArgs)
 	case "strln":
-		strln(commandArgs)
+		Strln(commandArgs)
 	case "del":
-		del(commandArgs)
+		Del(commandArgs)
 	case "append":
-		append(commandArgs)
+		Append(commandArgs)
 	case "request-log":
-		requestLog()
+		RequestLog()
 	case "change-server":
-		changeServer(commandArgs)
+		ChangeServer(commandArgs)
+	case "listen-web":
+		ListenWeb(commandArgs)
 	case "help":
-		help()
+		Help()
 	case "exit":
-		exit()
+		Exit()
 	default:
 	}
 
 	fmt.Println()
 }
 
-func validateCommand(command string, args []string) error {
+func ValidateCommand(command string, args []string) error {
 	switch command {
 	case "ping":
 		if len(args) != 0 {
@@ -107,6 +110,10 @@ func validateCommand(command string, args []string) error {
 		if len(args) != 2 {
 			return errors.New("usage: change-server <host> <port>")
 		}
+	case "listen-web":
+		if len(args) != 2 {
+			return errors.New("usage: listen-web <host> <port>")
+		}
 	case "help":
 		if len(args) != 0 {
 			return errors.New("usage: help")
@@ -122,7 +129,7 @@ func validateCommand(command string, args []string) error {
 	return nil
 }
 
-func ping() {
+func Ping() string {
 	fmt.Println("Pinging", targetServer)
 
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
@@ -131,13 +138,14 @@ func ping() {
 	r, err := serviceClient.Ping(ctx, &pb.PingRequest{})
 	if err != nil {
 		ClientLogger.Println(err)
-		return
+		return err.Error()
 	}
 
 	fmt.Println(r.GetResponse())
+	return r.GetResponse()
 }
 
-func get(args []string) {
+func Get(args []string) string {
 	// TODO
 	fmt.Println("Geting value", args[0])
 
@@ -147,13 +155,14 @@ func get(args []string) {
 	r, err := serviceClient.Get(ctx, &pb.KeyedRequest{Key: args[0]})
 	if err != nil {
 		ClientLogger.Println(err)
-		return
+		return err.Error()
 	}
 
 	fmt.Println(r.GetValue())
+	return r.GetValue()
 }
 
-func set(args []string) {
+func Set(args []string) string {
 	// TODO
 	fmt.Println("Set value", args[0], "with", args[1])
 
@@ -163,13 +172,14 @@ func set(args []string) {
 	r, err := serviceClient.Set(ctx, &pb.KeyValuedRequest{Key: args[0], Value: args[1]})
 	if err != nil {
 		ClientLogger.Println(err)
-		return
+		return err.Error()
 	}
 
 	fmt.Println(r.GetResponse())
+	return r.GetResponse()
 }
 
-func strln(args []string) {
+func Strln(args []string) string {
 	// TODO
 	fmt.Println("Strln", args[0])
 
@@ -179,13 +189,14 @@ func strln(args []string) {
 	r, err := serviceClient.Strln(ctx, &pb.KeyedRequest{Key: args[0]})
 	if err != nil {
 		ClientLogger.Println(err)
-		return
+		return err.Error()
 	}
 
 	fmt.Println(r.GetValue())
+	return r.GetValue()
 }
 
-func del(args []string) {
+func Del(args []string) string {
 	// TODO
 	fmt.Println("Delete value", args[0])
 
@@ -195,13 +206,14 @@ func del(args []string) {
 	r, err := serviceClient.Del(ctx, &pb.KeyedRequest{Key: args[0]})
 	if err != nil {
 		ClientLogger.Println(err)
-		return
+		return err.Error()
 	}
 
 	fmt.Println(r.GetValue())
+	return r.GetValue()
 }
 
-func append(args []string) {
+func Append(args []string) string {
 	// TODO
 	fmt.Println("Append value", args[0], "with", args[1])
 
@@ -211,13 +223,14 @@ func append(args []string) {
 	r, err := serviceClient.Append(ctx, &pb.KeyValuedRequest{Key: args[0], Value: args[1]})
 	if err != nil {
 		ClientLogger.Println(err)
-		return
+		return err.Error()
 	}
 
 	fmt.Println(r.GetResponse())
+	return r.GetResponse()
 }
 
-func requestLog() {
+func RequestLog() string {
 	// TODO
 	fmt.Println("Request Log", targetServer)
 
@@ -227,26 +240,54 @@ func requestLog() {
 	r, err := serviceClient.ReqLog(ctx, &pb.LogRequest{})
 	if err != nil {
 		ClientLogger.Println(err)
-		return
+		return err.Error()
 	}
 
 	fmt.Println(r.GetLogEntries())
+	// TODO print log entries as messages
+	return ""
 }
 
-func changeServer(args []string) {
+func ChangeServer(args []string) string {
+	host := args[0]
+	port, err := strconv.Atoi(args[1])
+	if err != nil {
+		fmt.Println("Error: invalid server port, port must be an integer")
+		return err.Error()
+	}
+
+	newServer := t.NewAddress(host, port)
+	SetTargetServer(&newServer)
+	fmt.Println("Successfully changing server to", targetServer)
+	return fmt.Sprintf("Successfully changing server to", targetServer)
+}
+
+func ListenWeb(args []string) {
 	host := args[0]
 	port, err := strconv.Atoi(args[1])
 	if err != nil {
 		fmt.Println("Error: invalid server port, port must be an integer")
 		return
 	}
+	address := t.NewAddress(host, port)
+	
+	// TODO: correct HTTP method
+	http.HandleFunc("/ping", LoggingMiddleware(handlePing))
+	http.HandleFunc("/get", LoggingMiddleware(handleGet))
+	http.HandleFunc("/set", LoggingMiddleware(handleSet))
+	http.HandleFunc("/strln", LoggingMiddleware(handleStrln))
+	http.HandleFunc("/del", LoggingMiddleware(handleDel))
+	http.HandleFunc("/append", LoggingMiddleware(handleAppend))
+	http.HandleFunc("/request-log", LoggingMiddleware(handleRequestLog))
 
-	newServer := t.NewAddress(host, port)
-	setTargetServer(&newServer)
-	fmt.Println("Successfully changing server to", targetServer)
+	fmt.Println("Starting HTTP server on", address)
+	err = http.ListenAndServe(address.String(), nil)
+	if err != nil {
+		fmt.Println("Error starting HTTP server:", err)
+	}
 }
 
-func help() {
+func Help() {
 	fmt.Println("Available commands:")
 	fmt.Println("ping          : Ping the server.")
 	fmt.Println("get           : Get the value associated with a key.")
@@ -254,13 +295,14 @@ func help() {
 	fmt.Println("strln         : Get the length of a string value associated with a key.")
 	fmt.Println("del           : Delete a key-value pair.")
 	fmt.Println("append        : Append a value to the string value associated with a key.")
-	fmt.Println("request-log   : Change the server address.")
-	fmt.Println("change-server : Change the server address.")
+	fmt.Println("request-log   : Request the log entries from the server.")
+	fmt.Println("change-server : Change the target server address.")
+	fmt.Println("listen-web    : Change client into web server.")
 	fmt.Println("help          : Display available commands and their descriptions.")
 	fmt.Println("exit          : Exit the program.")
 }
 
-func exit() {
+func Exit() {
 	fmt.Println("Exiting client...")
 	os.Exit(0)
 }

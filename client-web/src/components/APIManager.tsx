@@ -1,4 +1,5 @@
-import { useState } from "react";
+import axios, { AxiosError } from "axios";
+import { useEffect, useMemo, useState } from "react";
 import ExecuteButton from "./ExecuteButton";
 import InputNumber from "./InputNumber";
 import InputText from "./InputText";
@@ -12,7 +13,8 @@ export default function APIManager({
 }: APIManagerProps) {
     // Server Config
     const [serverHost, setServerHost] = useState('localhost');
-    const [serverPort, setServerPort] = useState(6969);
+    const [serverPort, setServerPort] = useState(2000);
+    const serverAddress = useMemo(() => `http://${serverHost}:${serverPort}`, [serverHost, serverPort]);
 
     // COmmands
     const [getKey, setGetKey] = useState('');
@@ -22,11 +24,19 @@ export default function APIManager({
     const [delKey, setDelKey] = useState('');
     const [appendKey, setAppendKey] = useState('');
     const [appendValue, setAppendValue] = useState('');
+
+    useEffect(() => {
+        handlePing()
+    }, []);
     
-    const handlePing = () => {
-        // TODO
-        appendLog("ping");
-        setGetKey("qweqw");
+    const handlePing = async () => {
+        // TODO handle all async appendLog issue
+        appendLog(`Pinging ${serverAddress}`);
+        axios.get(`${serverAddress}/ping`).then((response) => {
+            appendLog(response.data);
+        }).catch((error: AxiosError) => {
+            appendLog(error.message);
+        });
     };
 
     const handleGet = () => {
@@ -34,7 +44,18 @@ export default function APIManager({
     };
 
     const handleSet = () => {
-        // TODO
+        appendLog(`Set ${setKey} ${setValue}`);
+        axios.get(`${serverAddress}/set`, {
+            params: {
+                key: setKey,
+                value: setValue
+            }
+        }).then((response) => {
+            appendLog(response.data);
+        }).catch((error: AxiosError) => {
+            appendLog(error.message);
+        });
+
     };
 
     const handleStrln = () => {
