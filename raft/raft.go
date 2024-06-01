@@ -13,6 +13,10 @@ type raftState struct {
 	// also used as server ID
 	address string
 
+	// current node's state (follower, candidate, leader)
+	currentState  uint
+	leaderAddress string
+
 	// persistent states, at least in the paper
 	currentTerm uint64
 	votedFor    string
@@ -47,7 +51,8 @@ type RaftNode struct {
 func NewNode(address string) *RaftNode {
 	return &RaftNode{
 		raftState: raftState{
-			address: address,
+			address:      address,
+			currentState: Follower,
 
 			// currentTerm: 0,
 			// votedFor: "",

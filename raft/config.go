@@ -33,9 +33,9 @@ const (
 )
 
 const (
-	Leader = iota
+	Follower = iota
 	Candidate
-	Follower
+	Leader
 )
 
 const (
