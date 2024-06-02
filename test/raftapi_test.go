@@ -98,7 +98,7 @@ func TestCommit(t *testing.T) {
 	if err != nil {
 		t.Errorf("Commit failed: %v", err)
 	}
-	expected := "OK"
+	expected := "OK (0 commands executed)"
 	if response.Response != expected {
 		t.Errorf("Expected response: %s, but got: %s", expected, response.Response)
 	}
@@ -198,6 +198,74 @@ func TestAppend(t *testing.T) {
 	expectedValue := initialValue + appendValue
 	if getResponse.Value != expectedValue {
 		t.Errorf("Expected value: %s, but got: %s", expectedValue, getResponse.Value)
+	}
+}
+
+func TestRequestVote(t *testing.T) {
+
+	// Server1 (Follower)
+	serverAddress1 := transport.NewAddress("localhost", 1000)
+	raftNode1 := raft.NewNode(serverAddress1.String())
+
+	raftServer1 := &raft.RaftServer{Server: raftNode1}
+	lis1, err := net.Listen("tcp", serverAddress1.String())
+	if err != nil {
+		t.Fatalf("Failed to listen for the first server: %v", err)
+	}
+	defer lis1.Close()
+	grpcServer1 := grpc.NewServer()
+	pb.RegisterRaftServer(grpcServer1, raftServer1)
+	go grpcServer1.Serve(lis1)
+
+	// Server2 (Candidate)
+	serverAddress2 := transport.NewAddress("localhost", 2000)
+	raftNode2 := raft.NewNode(serverAddress2.String())
+	raftServer2 := &raft.RaftServer{Server: raftNode2}
+
+	lis2, err := net.Listen("tcp", serverAddress2.String())
+	if err != nil {
+		t.Fatalf("Failed to listen for the second server: %v", err)
+	}
+	defer lis2.Close()
+	grpcServer2 := grpc.NewServer()
+	pb.RegisterRaftServer(grpcServer2, raftServer2)
+	go grpcServer2.Serve(lis2)
+
+	// Granted request
+	request := &pb.RequestVoteArg{
+		Term:         1,
+		CandidateId:  "candidate1",
+		LastLogTerm:  1,
+		LastLogIndex: map[uint32]uint64{0: 0},
+	}
+
+	ctx := context.Background()
+
+	voteResponse, err := raftServer2.RequestVote(ctx, request)
+
+	if err != nil {
+		t.Fatalf("RequestVote failed: %v", err)
+	}
+
+	expectedVoteGranted := true
+	if voteResponse.VoteGranted != expectedVoteGranted {
+		t.Errorf("Expected VoteGranted: %v, but got: %v", expectedVoteGranted, voteResponse.VoteGranted)
+	}
+
+	if raftNode2.GetVotedFor() != request.CandidateId {
+		t.Errorf("Expected votedFor: %s, but got: %s", request.CandidateId, raftNode2.GetVotedFor())
+	}
+
+	// Rejected request
+	raftNode2.SetCurrentTerm(2)
+
+	voteResponse, err = raftServer2.RequestVote(ctx, request)
+	if err != nil {
+		t.Fatalf("RequestVote failed: %v", err)
+	}
+	expectedVoteGranted = false
+	if voteResponse.VoteGranted != expectedVoteGranted {
+		t.Errorf("Expected VoteGranted: %v, but got: %v", expectedVoteGranted, voteResponse.VoteGranted)
 	}
 }
 
