@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"google.golang.org/grpc"
@@ -198,6 +199,30 @@ func TestAppend(t *testing.T) {
 	expectedValue := initialValue + appendValue
 	if getResponse.Value != expectedValue {
 		t.Errorf("Expected value: %s, but got: %s", expectedValue, getResponse.Value)
+	}
+}
+
+func TestStrln(t *testing.T) {
+	// Set
+	ctx := context.Background()
+	key := "exampleKey"
+	value := "exampleValue"
+	setRequest := &pb.KeyValuedRequest{Key: key, Value: value}
+	_, err := client.Set(ctx, setRequest)
+	if err != nil {
+		t.Fatalf("Set failed: %v", err)
+	}
+
+	// Strln
+	strlnRequest := &pb.KeyedRequest{Key: key}
+	strlnResponse, err := client.Strln(ctx, strlnRequest)
+	if err != nil {
+		t.Fatalf("Strln failed: %v", err)
+	}
+
+	expectedValue := strconv.Itoa(len(value))
+	if strlnResponse.Value != expectedValue {
+		t.Errorf("Expected value: %s, but got: %s", expectedValue, strlnResponse.Value)
 	}
 }
 
