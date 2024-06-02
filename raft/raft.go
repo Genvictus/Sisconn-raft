@@ -120,3 +120,12 @@ func (r *RaftNode) heartBeat() {
 func (r *RaftNode) requestVote() {
 	// TODO
 }
+
+// util
+func (r *RaftNode) GetVotedFor() string {
+	return r.votedFor
+}
+
+func (r *RaftNode) SetCurrentTerm(term uint64) {
+	r.currentTerm = term
+}
