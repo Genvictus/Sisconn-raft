@@ -95,3 +95,38 @@ type RaftServer struct {
 }
 
 // TODO: implement raft protocol RPCs
+
+func (s *RaftServer) RequestVote(ctx context.Context, in *pb.RequestVoteArg) (*pb.VoteResult, error) {
+	log.Println("RequestVote")
+
+	// TODO proper response from follower
+	callerNode := s.Server
+
+	// fmt.Printf("RequestVote: %v\n", in.Term)
+	// fmt.Printf("Caller: %v\n", callerNode.address)
+
+	if in.Term < callerNode.currentTerm {
+		return &pb.VoteResult{VoteGranted: false}, nil
+	}
+
+	if callerNode.votedFor == "" || callerNode.votedFor == in.CandidateId {
+
+		// TODO proper log check
+		followerLog := &callerNode.log
+
+		if len(followerLog.logEntries) == 0 {
+			callerNode.votedFor = in.CandidateId
+			return &pb.VoteResult{VoteGranted: true, Term: in.Term}, nil
+		}
+
+		checkTerm := followerLog.logEntries[len(followerLog.logEntries)-1].term <= in.LastLogTerm
+		checkIdx := len(followerLog.logEntries)-1 <= int(in.LastLogIndex[0])
+
+		if checkTerm && checkIdx {
+			callerNode.votedFor = in.CandidateId
+			return &pb.VoteResult{VoteGranted: true, Term: in.Term}, nil
+		}
+	}
+
+	return &pb.VoteResult{VoteGranted: false}, nil
+}
