@@ -85,6 +85,8 @@ func executeCommand(input string) {
 		exit()
 	case "commit":
 		Commit()
+	case "cancel":
+		Cancel()
 	default:
 	}
 
@@ -144,6 +146,10 @@ func validateCommand(command string, args []string) error {
 	case "commit":
 		if !IsTransactionStart {
 			return errors.New("cant use commit")
+		}
+	case "cancel":
+		if !IsTransactionStart {
+			return errors.New("transaction is not started yet")
 		}
 	default:
 		return errors.New("unknown command: " + command)
@@ -298,6 +304,15 @@ func Append(args []string) string {
 
 	fmt.Println(r.GetResponse())
 	return r.GetResponse()
+}
+
+func Cancel() string {
+	fmt.Println("transaction canceled")
+
+	TransactionList = nil
+	IsTransactionStart = false
+
+	return ""
 }
 
 func Commit() string {
