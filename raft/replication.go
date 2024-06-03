@@ -84,7 +84,7 @@ func (k *keyValueReplication) applyLogEntry(index uint64) {
 	currentKey := k.logEntries[index].key
 	// if the log entry is deletion
 	if currentKey == _DELETE_KEY {
-		delete(k.replicatedState, currentKey)
+		delete(k.replicatedState, k.logEntries[index].value)
 	} else {
 		// else append the new value
 		k.replicatedState[currentKey] = k.logEntries[index].value
