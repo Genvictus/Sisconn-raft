@@ -74,9 +74,6 @@ func (r *RaftNode) AddConnections(targets []string) {
 	r.connLock.Lock()
 	defer r.connLock.Unlock()
 	for _, address := range targets {
-
-		r.membership.appendLog(r.currentTerm, address, _NodeActive)
-
 		// create connection
 		var conn, err = grpc.NewClient(
 			address,
@@ -98,8 +95,19 @@ func (r *RaftNode) AddConnections(targets []string) {
 	}
 }
 
-func (r *RaftNode) RemoveConnections(targets []*transport.Address) {
-	//TODO
+func (r *RaftNode) RemoveConnections(targets []string) {
+	r.membership.logLock.Lock()
+	defer r.membership.logLock.Unlock()
+
+	r.connLock.Lock()
+	defer r.connLock.Unlock()
+	for _, address := range targets {
+		// delete the grpc client
+		delete(r.raftClient, address)
+		// close the connection, then update the log
+		r.conn[address].Close()
+		r.membership.appendLog(r.currentTerm, _DELETE_KEY, address)
+	}
 }
 
 func (r *RaftNode) Run() {
