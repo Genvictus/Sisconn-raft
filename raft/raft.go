@@ -43,8 +43,11 @@ type commited struct {
 type RaftNode struct {
 	raftState
 
-	connLock   sync.RWMutex
-	conn       map[string]*grpc.ClientConn
+	connLock sync.RWMutex
+	// Connection to other raft nodes, be sure to close the connection
+	// when handling membership changes
+	conn map[string]*grpc.ClientConn
+	// Client for connection to other raft nodes
 	raftClient map[string]pb.RaftClient
 }
 
@@ -52,10 +55,11 @@ func NewNode(address string) *RaftNode {
 	return &RaftNode{
 		raftState: raftState{
 			address:      address,
-			currentState: Follower,
+			currentState: _Follower,
 
 			// currentTerm: 0,
 			// votedFor: "",
+
 			log: newKeyValueReplication(),
 
 			membership: newKeyValueReplication(),
@@ -63,38 +67,43 @@ func NewNode(address string) *RaftNode {
 	}
 }
 
-func (r *RaftNode) AddConnections(targets []*transport.Address) {
-	r.membership.logLock.RLock()
-	defer r.membership.logLock.RUnlock()
+func (r *RaftNode) AddConnections(targets []string) {
+	r.membership.logLock.Lock()
+	defer r.membership.logLock.Unlock()
 
 	r.connLock.Lock()
 	defer r.connLock.Unlock()
 	for _, address := range targets {
-		addressStr := address.String()
 
-		r.membership.appendLog(r.currentTerm, addressStr, NodeActive)
+		r.membership.appendLog(r.currentTerm, address, _NodeActive)
 
 		// create connection
 		var conn, err = grpc.NewClient(
-			addressStr,
+			address,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		)
 
+		// if any fails, stop the process
 		if err != nil {
 			// TODO write log
 			conn.Close()
-			continue
+			return
 		}
 
-		// if previous connection exists, close it first
-		if r.conn[addressStr] != nil {
-			r.conn[addressStr].Close()
-		}
-		r.conn[addressStr] = conn
-
+		// if successful, add connections
+		r.membership.appendLog(r.currentTerm, address, _NodeActive)
+		r.conn[address] = conn
 		// create grpc client
-		r.raftClient[addressStr] = pb.NewRaftClient(conn)
+		r.raftClient[address] = pb.NewRaftClient(conn)
 	}
+}
+
+func (r *RaftNode) RemoveConnections(targets []*transport.Address) {
+	//TODO
+}
+
+func (r *RaftNode) Run() {
+	// TODO
 }
 
 func (r *RaftNode) minVote() int {

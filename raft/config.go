@@ -5,11 +5,13 @@ import "time"
 // TIMEOUTS
 var CLIENT_TIMEOUT time.Duration = 500 * time.Millisecond
 
+var SERVER_RPC_TIMEOUT time.Duration = 500 * time.Millisecond
+
 var (
-	RPC_TIMEOUT          time.Duration = 500 * time.Millisecond
-	HEARTBEAT_INTERVAL   time.Duration = time.Second
-	ELECTION_TIMEOUT_MIN time.Duration = 2 * time.Second
-	ELECTION_TIMEOUT_MAX time.Duration = 3 * time.Second
+	// The raft intervals, in milliseconds
+	HEARTBEAT_INTERVAL   int = 1000
+	ELECTION_TIMEOUT_MIN int = 2000
+	ELECTION_TIMEOUT_MAX int = 3000
 )
 
 func SetClientTimeout(t time.Duration) {
@@ -17,10 +19,10 @@ func SetClientTimeout(t time.Duration) {
 }
 
 func SetServerRPCTimeout(t time.Duration) {
-	RPC_TIMEOUT = t
+	SERVER_RPC_TIMEOUT = t
 }
 
-func SetRaftIntervals(heartbeat time.Duration, election_min time.Duration, election_max time.Duration) {
+func SetRaftIntervals(heartbeat int, election_min int, election_max int) {
 	HEARTBEAT_INTERVAL = heartbeat
 	ELECTION_TIMEOUT_MIN = election_min
 	ELECTION_TIMEOUT_MAX = election_max
@@ -28,17 +30,17 @@ func SetRaftIntervals(heartbeat time.Duration, election_min time.Duration, elect
 
 // Raft Constants
 const (
-	MembershipLog = iota
-	DataLog
+	_MembershipLog = iota
+	_DataLog
 )
 
 const (
-	Follower = iota
-	Candidate
-	Leader
+	_Follower = iota
+	_Candidate
+	_Leader
 )
 
 const (
-	NodeActive   = "active"
-	NodeInactive = "inactive"
+	_NodeActive   = "active"
+	_NodeInactive = "inactive"
 )

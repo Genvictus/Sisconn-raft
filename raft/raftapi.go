@@ -43,7 +43,7 @@ func (s *ServiceServer) Strln(ctx context.Context, in *pb.KeyedRequest) (*pb.Val
 func (s *ServiceServer) Del(ctx context.Context, in *pb.KeyedRequest) (*pb.ValueResponse, error) {
 	log.Println("del key:", in.Key)
 	val := s.Server.log.get(in.Key)
-	s.Server.log.appendLog(s.Server.currentTerm, in.Key, "")
+	s.Server.log.appendLog(s.Server.currentTerm, _DELETE_KEY, in.Key)
 	return &pb.ValueResponse{Value: val}, nil
 }
 
@@ -69,7 +69,7 @@ func (s *ServiceServer) Commit(ctx context.Context, in *pb.CommitRequest) (*pb.M
 		log.Println(entry.Type)
 		entries = append(entries, TransactionEntry{command: entry.Type, key: entry.Key, value: entry.Value})
 	}
-	s.Server.log.appendMultipleLog(s.Server.currentTerm, entries)
+	s.Server.log.appendTransaction(s.Server.currentTerm, entries)
 	return &pb.MessageResponse{Response: "OK (" + strconv.Itoa(len(entries)) + " commands executed)"}, nil
 }
 
@@ -114,12 +114,12 @@ func (s *RaftServer) RequestVote(ctx context.Context, in *pb.RequestVoteArg) (*p
 		// TODO proper log check
 		followerLog := &callerNode.log
 
-		if len(followerLog.logEntries) == 0 {
+		if followerLog.lastIndex == 0 {
 			callerNode.votedFor = in.CandidateId
 			return &pb.VoteResult{VoteGranted: true, Term: in.Term}, nil
 		}
 
-		checkTerm := followerLog.logEntries[len(followerLog.logEntries)-1].term <= in.LastLogTerm
+		checkTerm := followerLog.logEntries[followerLog.lastIndex].term <= in.LastLogTerm
 		checkIdx := len(followerLog.logEntries)-1 <= int(in.LastLogIndex[0])
 
 		if checkTerm && checkIdx {
