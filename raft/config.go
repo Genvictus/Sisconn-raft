@@ -44,3 +44,9 @@ const (
 	_NodeActive   = "active"
 	_NodeInactive = "inactive"
 )
+
+const (
+	_RefreshFollower = iota
+	_NewAppendEntry
+	_StepDown
+)

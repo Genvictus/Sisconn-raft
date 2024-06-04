@@ -28,6 +28,9 @@ type keyValuelogPlayer interface {
 	// Replace the log's entry starting from the startIndex
 	// (rolling back the state as well), then append the new entries
 	replaceLog(startIndex uint64, logEntries []keyValueReplicationEntry)
+
+	// Get the log entries specified from startIndex to lastIndex (inclusive)
+	getEntries(startIndex uint64, lastIndex uint64) []keyValueReplicationEntry
 }
 
 type keyValueReplicationEntry struct {
@@ -158,6 +161,13 @@ func (k *keyValueReplication) replaceLog(startIndex uint64, logEntries []keyValu
 
 	k.replicatedState = map[string]string{}
 	k.replayLog(_START_INDEX, uint64(len(k.logEntries))-1)
+}
+
+func (k *keyValueReplication) getEntries(startIndex uint64, lastIndex uint64) []keyValueReplicationEntry {
+	k.logLock.RLock()
+	entries := k.logEntries[startIndex : lastIndex+1]
+	k.logLock.RUnlock()
+	return entries
 }
 
 func (k *keyValueReplication) get(key string) string {
