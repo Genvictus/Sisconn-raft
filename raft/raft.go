@@ -3,9 +3,9 @@ package raft
 import (
 	pb "Sisconn-raft/raft/raftpc"
 	"context"
+	"fmt"
 	"log"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"google.golang.org/grpc"
@@ -79,31 +79,32 @@ func NewNode(address string) *RaftNode {
 }
 
 func (r *RaftNode) AddConnections(targets []string) {
-	r.membership.logLock.Lock()
-	defer r.membership.logLock.Unlock()
-
 	r.connLock.Lock()
-	defer r.connLock.Unlock()
 	for _, address := range targets {
 		// create connection
-		var conn, err = grpc.NewClient(
-			address,
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
-		)
+		if address != r.address {
+			var conn, err = grpc.NewClient(
+				address,
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+			)
 
-		// if any fails, stop the process
-		if err != nil {
-			// TODO write log
-			conn.Close()
-			return
+			// if any fails, stop the process
+			if err != nil {
+				// TODO write log
+				conn.Close()
+				return
+			}
+
+			// if successful, add connections
+			r.conn[address] = conn
+			// create grpc client
+			r.raftClient[address] = pb.NewRaftClient(conn)
 		}
 
-		// if successful, add connections
 		r.membership.appendLog(r.currentTerm, address, _NodeActive)
-		r.conn[address] = conn
-		// create grpc client
-		r.raftClient[address] = pb.NewRaftClient(conn)
 	}
+	r.membership.commitEntries(r.membership.lastIndex)
+	r.connLock.Unlock()
 }
 
 func (r *RaftNode) RemoveConnections(targets []string) {
@@ -125,11 +126,11 @@ func (r *RaftNode) Run() {
 	for {
 		switch r.currentState {
 		case _Leader:
-			timer := time.NewTimer(time.Duration(time.Duration(HEARTBEAT_INTERVAL) * time.Millisecond))
+			timer := time.NewTimer(HEARTBEAT_INTERVAL)
 			select {
 			case <-timer.C:
 				// send heartbeat, synchronize log content at that
-				r.appendEntries(true)
+				r.appendEntries(true, nil)
 			case change := <-r.stateChange:
 				if !timer.Stop() {
 					<-timer.C
@@ -141,8 +142,8 @@ func (r *RaftNode) Run() {
 					r.currentState = _Follower
 					r.raftLock.Unlock()
 				case _NewAppendEntry:
-					// server received new command from client, append new entry
-					r.appendEntries(false)
+					// server received new command from client, append entry sent
+					// do nothing, let the timer refresh
 				}
 			}
 
@@ -169,31 +170,82 @@ func (r *RaftNode) Run() {
 	}
 }
 
-func (r *RaftNode) minVote() int {
+// count number of nodes in the cluster
+// isQuorum returns the quorum for the nodes majority
+func (r *RaftNode) countNodes(isQuorum bool) int {
 	r.membership.logLock.RLock()
 	n := len(r.membership.replicatedState)
 	r.membership.logLock.RUnlock()
-
+	if isQuorum {
+		n = n/2 + 1
+	}
 	return n
 }
 
-func (r *RaftNode) appendEntries(isHeartbeat bool) {
-	r.membership.stateLock.RLock()
-	defer r.membership.stateLock.RUnlock()
+func (r *RaftNode) replicateEntry() bool {
+	isComitted := make(chan bool)
+	// TODO signal raft main thread
+	// r.stateChange <- _NewAppendEntry
+	go r.appendEntries(false, isComitted)
 
-	var successCount = atomic.Int32{}
-	successCount.Store(0)
+	// wait until committed
+	<-isComitted
+	return true
+}
+
+func (r *RaftNode) appendEntries(isHeartbeat bool, isCommitted chan<- bool) {
+	r.log.indexLock.RLock()
+	lastIndex := r.log.lastIndex
+	r.log.indexLock.RUnlock()
+
+	r.membership.stateLock.RLock()
+	var completedCh = make(chan bool)
 	for address, _ := range r.membership.replicatedState {
 		if address != r.address {
-			go r.singleAppendEntries(address, isHeartbeat, &successCount)
+			go func() {
+				r.singleAppendEntries(address, isHeartbeat)
+				completedCh <- true
+			}()
+		}
+	}
+	r.membership.stateLock.RUnlock()
+
+	totalNodes := r.countNodes(false)
+	// if single server, just commit
+	if totalNodes == 1 {
+		r.log.commitEntries(lastIndex)
+		isCommitted <- true
+		return
+	}
+	// this waits at least for majority of RPC to complete replication
+	// somewhat a partial barrier (for majority of goroutines)
+	majority := totalNodes/2 + 1
+	var successCount = 0
+	for {
+		<-completedCh
+		successCount++
+		fmt.Println(successCount, majority, totalNodes)
+		if successCount == (majority - 1) {
+			// if majority has replicated, notify replication's committed
+			r.log.commitEntries(lastIndex)
+			isCommitted <- true
+		}
+		if successCount == (totalNodes - 1) {
+			return
 		}
 	}
 }
 
-func (r *RaftNode) singleAppendEntries(address string, untilMatch bool, successCount *atomic.Int32) {
+func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) {
 	targetClient := r.raftClient[address]
 	var appendSuccessful = false
 
+	// get server's last log index
+	r.log.indexLock.RLock()
+	lastIndex := r.log.lastIndex
+	r.log.indexLock.RUnlock()
+
+	// maybe add counter to limit retries
 	for !appendSuccessful {
 		// get the current status of node
 		// if node checks that it's no longer leader, stop
@@ -204,7 +256,12 @@ func (r *RaftNode) singleAppendEntries(address string, untilMatch bool, successC
 		// get follower's log (supposedly) last index and term
 		prevLogIndex, prevLogTerm := r.getFollowerIndex(address)
 		// prepare log entries
-		logEntries := r.createLogEntryArgs(prevLogIndex+1, r.log.lastIndex)
+		var logEntries []*pb.LogEntry
+		if isHeartbeat {
+			logEntries = make([]*pb.LogEntry, 0)
+		} else {
+			logEntries = r.createLogEntryArgs(prevLogIndex+1, lastIndex)
+		}
 
 		// get leader's last commit index
 		r.log.indexLock.RLock()
@@ -232,30 +289,26 @@ func (r *RaftNode) singleAppendEntries(address string, untilMatch bool, successC
 			break
 		}
 
+		// if call is not set to retry until log matches
+		if isHeartbeat {
+			break
+		}
+
 		// follower term is newer than this term, immediately step down
 		if result.Term > r.currentTerm {
 			r.stateChange <- _StepDown
 		}
 		// check if append is successful
+		r.indexLock.Lock()
 		if !result.Success {
 			// decrement the index for next appendEntries()
-			r.indexLock.Lock()
 			r.nextIndex[address]--
-			r.indexLock.Unlock()
 		} else {
-			// add to successful append entries
-			successCount.Add(1)
-
-			// increment the index
-			r.indexLock.Lock()
-			r.nextIndex[address]++
-			r.indexLock.Unlock()
+			appendSuccessful = true
+			// update the index
+			r.nextIndex[address] = lastIndex + 1
 		}
-
-		// if call is not set to retry until log matches
-		if !untilMatch {
-			break
-		}
+		r.indexLock.Unlock()
 	}
 }
 

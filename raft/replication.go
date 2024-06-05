@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"log"
 	"sync"
 )
 
@@ -18,19 +19,18 @@ var (
 )
 
 type keyValuelogPlayer interface {
+	// Append a new entry to the log
+	appendLog(term uint64, key string, value string)
+	// Replace the log's entry starting from the startIndex
+	replaceLog(startIndex uint64, logEntries []keyValueReplicationEntry)
+	// commit the entire log entries up to the specified index, and applying its logs as well
+	commitEntries(lastIndex uint64)
 	// Applies log from starting index to the last index specified
 	replayLog(startIndex uint64, lastIndex uint64)
-
-	// Append a new entry to the log, and then play the appended log entry
-	appendLog(term uint64, key string, value string)
-	appendTransaction(term uint64, entries []TransactionEntry)
-
-	// Replace the log's entry starting from the startIndex
-	// (rolling back the state as well), then append the new entries
-	replaceLog(startIndex uint64, logEntries []keyValueReplicationEntry)
-
 	// Get the log entries specified from startIndex to lastIndex (inclusive)
 	getEntries(startIndex uint64, lastIndex uint64) []keyValueReplicationEntry
+
+	appendTransaction(term uint64, entries []TransactionEntry)
 }
 
 type keyValueReplicationEntry struct {
@@ -81,29 +81,22 @@ func newKeyValueReplication() keyValueReplication {
 	}
 }
 
-func (k *keyValueReplication) applyLogEntry(index uint64) {
-	k.stateLock.Lock()
-
-	currentKey := k.logEntries[index].key
-	// if the log entry is deletion
-	if currentKey == _DELETE_KEY {
-		delete(k.replicatedState, k.logEntries[index].value)
-	} else {
-		// else append the new value
-		k.replicatedState[currentKey] = k.logEntries[index].value
-	}
-
-	k.stateLock.Unlock()
-}
-
 func (k *keyValueReplication) replayLog(startIndex uint64, lastIndex uint64) {
 	k.indexLock.Lock()
 	k.logLock.RLock()
 	k.stateLock.Lock()
 
 	for i := startIndex; i <= lastIndex; i++ {
-		k.applyLogEntry(i)
+		currentKey := k.logEntries[i].key
+		// if the log entry is deletion
+		if currentKey == _DELETE_KEY {
+			delete(k.replicatedState, k.logEntries[i].value)
+		} else {
+			// else append the new value
+			k.replicatedState[currentKey] = k.logEntries[i].value
+		}
 	}
+	// update appliy index
 	k.lastApplied = lastIndex
 
 	k.stateLock.Unlock()
@@ -118,9 +111,6 @@ func (k *keyValueReplication) appendLog(term uint64, key string, value string) {
 	// append and update index
 	k.logEntries = append(k.logEntries, keyValueReplicationEntry{term: term, key: key, value: value})
 	k.lastIndex++
-	// then apply the new entry
-	k.applyLogEntry(k.lastIndex)
-	k.lastApplied = k.lastIndex
 
 	k.logLock.Unlock()
 	k.indexLock.Unlock()
@@ -140,9 +130,6 @@ func (k *keyValueReplication) appendTransaction(term uint64, entries []Transacti
 		// append and update index
 		k.logEntries = append(k.logEntries, keyValueReplicationEntry{term: term, key: entry.key, value: newval})
 		k.lastIndex++
-		// then apply the new entry
-		k.applyLogEntry(k.lastIndex)
-		k.lastApplied = k.lastIndex
 	}
 
 	k.logLock.Unlock()
@@ -158,9 +145,17 @@ func (k *keyValueReplication) replaceLog(startIndex uint64, logEntries []keyValu
 
 	k.logLock.Unlock()
 	k.indexLock.Unlock()
+}
 
-	k.replicatedState = map[string]string{}
-	k.replayLog(_START_INDEX, uint64(len(k.logEntries))-1)
+func (k *keyValueReplication) commitEntries(lastIndex uint64) {
+	if lastIndex <= k.commitIndex {
+		return
+	}
+	k.replayLog(k.lastApplied+1, lastIndex)
+	k.indexLock.Lock()
+	k.commitIndex = lastIndex
+	log.Printf("Log Committed at index: %d\n", k.commitIndex)
+	k.indexLock.Unlock()
 }
 
 func (k *keyValueReplication) getEntries(startIndex uint64, lastIndex uint64) []keyValueReplicationEntry {

@@ -32,6 +32,7 @@ func (s *ServiceServer) Get(ctx context.Context, in *pb.KeyedRequest) (*pb.Value
 func (s *ServiceServer) Set(ctx context.Context, in *pb.KeyValuedRequest) (*pb.MessageResponse, error) {
 	log.Println("set key:", in.Key, "with value:", in.Value)
 	s.Server.log.appendLog(s.Server.currentTerm, in.Key, in.Value)
+	s.Server.replicateEntry()
 	return &pb.MessageResponse{Response: "OK"}, nil
 }
 
@@ -44,12 +45,14 @@ func (s *ServiceServer) Del(ctx context.Context, in *pb.KeyedRequest) (*pb.Value
 	log.Println("del key:", in.Key)
 	val := s.Server.log.get(in.Key)
 	s.Server.log.appendLog(s.Server.currentTerm, _DELETE_KEY, in.Key)
+	s.Server.replicateEntry()
 	return &pb.ValueResponse{Value: val}, nil
 }
 
 func (s *ServiceServer) Append(ctx context.Context, in *pb.KeyValuedRequest) (*pb.MessageResponse, error) {
 	log.Println("append key:", in.Key, "with", in.Value)
 	s.Server.log.appendLog(s.Server.currentTerm, in.Key, s.Server.log.get(in.Key)+in.Value)
+	s.Server.replicateEntry()
 	return &pb.MessageResponse{Response: "OK"}, nil
 }
 
@@ -70,6 +73,7 @@ func (s *ServiceServer) Commit(ctx context.Context, in *pb.CommitRequest) (*pb.M
 		entries = append(entries, TransactionEntry{command: entry.Type, key: entry.Key, value: entry.Value})
 	}
 	s.Server.log.appendTransaction(s.Server.currentTerm, entries)
+	s.Server.replicateEntry()
 	return &pb.MessageResponse{Response: "OK (" + strconv.Itoa(len(entries)) + " commands executed)"}, nil
 }
 
@@ -83,8 +87,6 @@ func (s *ServiceServer) RemoveNode(ctx context.Context, in *pb.KeyedRequest) (*p
 	return &pb.MessageResponse{Response: "Not Implemented"}, nil
 }
 
-// TODO: implement other RPCs
-
 /*
 	Raft internudes RPC implementation
 */
@@ -93,8 +95,6 @@ type RaftServer struct {
 	pb.UnimplementedRaftServer
 	Server *RaftNode
 }
-
-// TODO: implement raft protocol RPCs
 
 func (s *RaftServer) RequestVote(ctx context.Context, in *pb.RequestVoteArg) (*pb.VoteResult, error) {
 	log.Println("RequestVote")
