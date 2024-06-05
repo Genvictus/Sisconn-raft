@@ -225,6 +225,42 @@ func TestStrln(t *testing.T) {
 	if strlnResponse.Value != expectedValue {
 		t.Errorf("Expected value: %s, but got: %s", expectedValue, strlnResponse.Value)
 	}
+	
+	// Append
+	appendValue := " appended"
+	appendRequest := &pb.KeyValuedRequest{Key: key, Value: appendValue}
+	_, err = client.Append(ctx, appendRequest)
+	if err != nil {
+		t.Fatalf("Append failed: %v", err)
+	}
+
+	// Strln
+	strlnResponse, err = client.Strln(ctx, strlnRequest)
+	if err != nil {
+		t.Fatalf("Strln failed: %v", err)
+	}
+	
+	expectedValue = strconv.Itoa(len(value) + len(appendValue))
+	if strlnResponse.Value != expectedValue {
+		t.Errorf("Expected value: %s, but got: %s", expectedValue, strlnResponse.Value)
+	}
+
+	// Del
+	delRequest := &pb.KeyedRequest{Key: key}
+	_, err = client.Del(ctx, delRequest)
+	if err != nil {
+		t.Fatalf("Del failed: %v", err)
+	}
+
+	strlnResponse, err = client.Strln(ctx, strlnRequest)
+	if err != nil {
+		t.Fatalf("Strln failed: %v", err)
+	}
+	
+	expectedValue = "0"
+	if strlnResponse.Value != expectedValue {
+		t.Errorf("Expected value: %s, but got: %s", expectedValue, strlnResponse.Value)
+	}
 }
 
 func TestRequestVote(t *testing.T) {
