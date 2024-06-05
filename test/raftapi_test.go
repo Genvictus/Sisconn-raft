@@ -82,6 +82,7 @@ func TestReqLog(t *testing.T) {
 
 	// Verify ReqLog
 	expectedLogEntries := []*pb.LogEntry{
+		{},
 		{Key: key1, Value: value1},
 		{Key: key2, Value: value2},
 	}
