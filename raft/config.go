@@ -8,10 +8,9 @@ var CLIENT_TIMEOUT time.Duration = 500 * time.Millisecond
 var SERVER_RPC_TIMEOUT time.Duration = 500 * time.Millisecond
 
 var (
-	// The raft intervals, in milliseconds
-	HEARTBEAT_INTERVAL   int = 1000
-	ELECTION_TIMEOUT_MIN int = 2000
-	ELECTION_TIMEOUT_MAX int = 3000
+	HEARTBEAT_INTERVAL   time.Duration = 1000 * time.Millisecond
+	ELECTION_TIMEOUT_MIN time.Duration = 2000 * time.Millisecond
+	ELECTION_TIMEOUT_MAX time.Duration = 3000 * time.Millisecond
 )
 
 func SetClientTimeout(t time.Duration) {
@@ -22,7 +21,7 @@ func SetServerRPCTimeout(t time.Duration) {
 	SERVER_RPC_TIMEOUT = t
 }
 
-func SetRaftIntervals(heartbeat int, election_min int, election_max int) {
+func SetRaftIntervals(heartbeat time.Duration, election_min time.Duration, election_max time.Duration) {
 	HEARTBEAT_INTERVAL = heartbeat
 	ELECTION_TIMEOUT_MIN = election_min
 	ELECTION_TIMEOUT_MAX = election_max

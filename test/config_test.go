@@ -26,15 +26,15 @@ func TestSetServerRPCTimeout(t *testing.T) {
     expected := 5 * time.Second
     raft.SetServerRPCTimeout(expected)
     
-    if raft.RPC_TIMEOUT != expected {
-        t.Errorf("SetServerRPCTimeout failed, expected %v, got %v", expected, raft.RPC_TIMEOUT)
+    if raft.SERVER_RPC_TIMEOUT != expected {
+        t.Errorf("SetServerRPCTimeout failed, expected %v, got %v", expected, raft.SERVER_RPC_TIMEOUT)
     }
 
     expected = 10 * time.Second
     raft.SetServerRPCTimeout(expected)
     
-    if raft.RPC_TIMEOUT != expected {
-        t.Errorf("SetServerRPCTimeout failed, expected %v, got %v", expected, raft.RPC_TIMEOUT)
+    if raft.SERVER_RPC_TIMEOUT != expected {
+        t.Errorf("SetServerRPCTimeout failed, expected %v, got %v", expected, raft.SERVER_RPC_TIMEOUT)
     }
 }
 
