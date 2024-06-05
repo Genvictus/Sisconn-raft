@@ -66,7 +66,7 @@ func (s *ServiceServer) Commit(ctx context.Context, in *pb.CommitRequest) (*pb.M
 	log.Println("commit")
 	var entries []TransactionEntry
 	for _, entry := range in.CommitEntries {
-		log.Println(entry.Type)
+		log.Println(entry.Type, entry.Key, entry.Value)
 		entries = append(entries, TransactionEntry{command: entry.Type, key: entry.Key, value: entry.Value})
 	}
 	s.Server.log.appendTransaction(s.Server.currentTerm, entries)

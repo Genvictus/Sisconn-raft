@@ -266,7 +266,7 @@ func TestStrln(t *testing.T) {
 func TestRequestVote(t *testing.T) {
 
 	// Server1 (Follower)
-	serverAddress1 := transport.NewAddress("localhost", 1000)
+	serverAddress1 := transport.NewAddress("localhost", 2001)
 	raftNode1 := raft.NewNode(serverAddress1.String())
 
 	raftServer1 := &raft.RaftServer{Server: raftNode1}
@@ -280,7 +280,7 @@ func TestRequestVote(t *testing.T) {
 	go grpcServer1.Serve(lis1)
 
 	// Server2 (Candidate)
-	serverAddress2 := transport.NewAddress("localhost", 2000)
+	serverAddress2 := transport.NewAddress("localhost", 2002)
 	raftNode2 := raft.NewNode(serverAddress2.String())
 	raftServer2 := &raft.RaftServer{Server: raftNode2}
 
