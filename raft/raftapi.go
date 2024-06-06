@@ -99,23 +99,22 @@ type RaftServer struct {
 func (s *RaftServer) RequestVote(ctx context.Context, in *pb.RequestVoteArg) (*pb.VoteResult, error) {
 	log.Println("RequestVote")
 
-	// TODO proper response from follower
-	callerNode := s.Server
+	followerNode := s.Server
 
 	// fmt.Printf("RequestVote: %v\n", in.Term)
 	// fmt.Printf("Caller: %v\n", callerNode.address)
 
-	if in.Term < callerNode.currentTerm {
+	if in.Term < followerNode.currentTerm {
 		return &pb.VoteResult{VoteGranted: false}, nil
 	}
 
-	if callerNode.votedFor == "" || callerNode.votedFor == in.CandidateId {
+	if followerNode.votedFor == "" || followerNode.votedFor == in.CandidateId {
 
 		// TODO proper log check
-		followerLog := &callerNode.log
+		followerLog := &followerNode.log
 
 		if followerLog.lastIndex == 0 {
-			callerNode.votedFor = in.CandidateId
+			followerNode.votedFor = in.CandidateId
 			return &pb.VoteResult{VoteGranted: true, Term: in.Term}, nil
 		}
 
@@ -123,7 +122,7 @@ func (s *RaftServer) RequestVote(ctx context.Context, in *pb.RequestVoteArg) (*p
 		checkIdx := len(followerLog.logEntries)-1 <= int(in.LastLogIndex[0])
 
 		if checkTerm && checkIdx {
-			callerNode.votedFor = in.CandidateId
+			followerNode.votedFor = in.CandidateId
 			return &pb.VoteResult{VoteGranted: true, Term: in.Term}, nil
 		}
 	}

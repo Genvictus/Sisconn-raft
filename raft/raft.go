@@ -148,7 +148,7 @@ func (r *RaftNode) Run() {
 			}
 
 		case _Candidate:
-			r.requestVote()
+			r.requestVotes()
 		case _Follower:
 			timer := time.NewTimer(randMs(ELECTION_TIMEOUT_MIN, ELECTION_TIMEOUT_MAX))
 			select {
@@ -312,8 +312,79 @@ func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) {
 	}
 }
 
-func (r *RaftNode) requestVote() {
-	// TODO
+func (r *RaftNode) requestVotes() {
+	// increment term
+	r.raftLock.Lock()
+	r.currentTerm++
+	r.votedFor = r.address
+	r.raftLock.Unlock()
+
+	// get last log index and term
+	r.log.indexLock.RLock()
+	lastIndex := r.log.lastIndex
+	lastTerm := r.log.getEntries(lastIndex, lastIndex)[0].term
+	r.log.indexLock.RUnlock()
+
+	// count votes
+	voteCount := 1
+	voteCh := make(chan bool, r.countNodes(false)-1)
+	// send vote request to all nodes
+	for address := range r.raftClient {
+		if address != r.address {
+			go func(addr string) {
+				voteCh <- r.singleRequestVote(addr, lastIndex, lastTerm)
+			}(address)
+		}
+	}
+
+	totalNodes := r.countNodes(true)
+	for voteGranted := range voteCh {
+		if voteGranted {
+			voteCount++
+		}
+
+		if voteCount >= totalNodes {
+			r.raftLock.Lock()
+			r.currentState = _Leader
+			r.raftLock.Unlock()
+			close(voteCh)
+			return
+		}
+	}
+}
+
+func (r *RaftNode) singleRequestVote(address string, lastLogIndex uint64, lastLogTerm uint64) bool {
+	targetClient := r.raftClient[address]
+	// map?
+	lastLogIndexMap := map[uint32]uint64{0: lastLogIndex}
+	args := pb.RequestVoteArg{
+		Term:         r.currentTerm,
+		CandidateId:  r.address,
+		LastLogIndex: lastLogIndexMap,
+		LastLogTerm:  lastLogTerm,
+	}
+
+	// RPC
+	ctx, cancel := context.WithTimeout(context.Background(), SERVER_RPC_TIMEOUT)
+	result, err := targetClient.RequestVote(ctx, &args)
+	defer cancel()
+
+	if err != nil {
+		log.Println(err.Error())
+		return false
+	}
+
+	// // if follower term is newer immediately step down?
+	// if result.Term > r.currentTerm {
+	// 	r.stateChange <- _StepDown
+	// 	return false
+	// }
+
+	// if vote is granted, return true
+	if result.VoteGranted {
+		return true
+	}
+	return false
 }
 
 // additional funcs to help with implementation
