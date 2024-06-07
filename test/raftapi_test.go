@@ -56,7 +56,6 @@ func TestPing(t *testing.T) {
 	}
 }
 
-// TODO fix tests
 func TestReqLog(t *testing.T) {
 	// Set up
 	ctx := context.Background()
@@ -96,15 +95,49 @@ func TestReqLog(t *testing.T) {
 func TestCommit(t *testing.T) {
 	ctx := context.Background()
 
-	// TODO proper commit test
-	request := &pb.CommitRequest{}
+	// Transaction list
+	request := &pb.CommitRequest{
+		CommitEntries: []*pb.CommitEntry{
+			{Type: "set", Key: "CommitKey1", Value: "CommitValue1"},
+			{Type: "set", Key: "CommitKey2", Value: "CommitValue2"},
+			{Type: "set", Key: "CommitKey3", Value: "CommitValue3"},
+			{Type: "set", Key: "CommitKey4", Value: "CommitValue4"},
+			{Type: "del", Key: "CommitKey2", Value: ""},
+			{Type: "append", Key: "CommitKey3", Value: " AppendValue3"},
+			{Type: "set", Key: "CommitKey4", Value: "ResetValue4"},
+		},
+	}
+
+	// Commit
 	response, err := client.Commit(ctx, request)
 	if err != nil {
 		t.Errorf("Commit failed: %v", err)
 	}
-	expected := "OK (0 commands execution)"
+	expected := "OK (7 commands execution)"
 	if response.Response != expected {
 		t.Errorf("Expected response: %s, but got: %s", expected, response.Response)
+	}
+
+	// Check get value
+	tests := []*pb.KeyValuedRequest{
+		{Key: "CommitKey1", Value: "CommitValue1"},
+		{Key: "CommitKey2", Value: ""},
+		{Key: "CommitKey3", Value: "CommitValue3 AppendValue3"},
+		{Key: "CommitKey4", Value: "ResetValue4"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Key, func(t *testing.T) {
+			getRequest := &pb.KeyedRequest{Key: tt.Key}
+			getResponse, err := client.Get(ctx, getRequest)
+			if err != nil {
+				t.Fatalf("Get failed: %v", err)
+			}
+
+			if getResponse.Value != tt.Value {
+				t.Errorf("Expected value for key %s: %s, but got: %s", tt.Key, tt.Value, getResponse.Value)
+			}
+		})
 	}
 }
 
