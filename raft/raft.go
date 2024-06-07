@@ -184,8 +184,8 @@ func (r *RaftNode) replicateEntry(ctx context.Context) bool {
 
 	// wait until committed
 	select {
-	case comitted := <-committedCh:
-		return comitted
+	case committed := <-committedCh:
+		return committed
 	case <-ctx.Done():
 		return false
 	}

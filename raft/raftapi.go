@@ -37,9 +37,9 @@ func (s *ServiceServer) Set(ctx context.Context, in *pb.KeyValuedRequest) (*pb.M
 	defer cancel()
 	var response string
 	if s.Server.replicateEntry(commitCtx) {
-		response = "Pending"
-	} else {
 		response = "OK"
+	} else {
+		response = "Pending"
 	}
 	return &pb.MessageResponse{Response: response}, nil
 }
@@ -68,9 +68,9 @@ func (s *ServiceServer) Append(ctx context.Context, in *pb.KeyValuedRequest) (*p
 	defer cancel()
 	var response string
 	if s.Server.replicateEntry(commitCtx) {
-		response = "Pending"
-	} else {
 		response = "OK"
+	} else {
+		response = "Pending"
 	}
 	return &pb.MessageResponse{Response: response}, nil
 }
@@ -97,9 +97,9 @@ func (s *ServiceServer) Commit(ctx context.Context, in *pb.CommitRequest) (*pb.M
 	defer cancel()
 	var response string
 	if s.Server.replicateEntry(commitCtx) {
-		response = "Pending"
-	} else {
 		response = "OK"
+	} else {
+		response = "Pending"
 	}
 	return &pb.MessageResponse{Response: response + " (" + strconv.Itoa(len(entries)) + " commands execution)"}, nil
 }
