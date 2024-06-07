@@ -4,7 +4,7 @@ import Log from './components/Log';
 
 function App() {
   const [logs, setLogs] = useState('');
-  
+
   const appendLog = (log: string) => {
     setLogs(prevLogs => prevLogs + '> ' + log + '\n');
   };
