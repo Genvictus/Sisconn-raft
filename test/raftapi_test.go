@@ -22,13 +22,14 @@ var (
 
 func TestMain(m *testing.M) {
 	serverAddress := transport.NewAddress("localhost", 1234)
-	raftNode := raft.NewNode(serverAddress.String())
 	lis, err := net.Listen("tcp", serverAddress.String())
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 	defer lis.Close()
 
+	raftNode := raft.NewNode(serverAddress.String())
+	raftNode.AddConnections([]string{serverAddress.String()})
 	go startGRPCServer(raftNode, lis)
 
 	conn, err := grpc.NewClient(serverAddress.String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
