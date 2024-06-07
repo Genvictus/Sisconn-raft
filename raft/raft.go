@@ -3,7 +3,6 @@ package raft
 import (
 	pb "Sisconn-raft/raft/raftpc"
 	"context"
-	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -37,11 +36,6 @@ type raftState struct {
 
 	// Cluster Membership
 	membership keyValueReplication
-}
-
-type commited struct {
-	sync.Mutex
-	commited chan struct{}
 }
 
 type RaftNode struct {
@@ -182,29 +176,32 @@ func (r *RaftNode) countNodes(isQuorum bool) int {
 	return n
 }
 
-func (r *RaftNode) replicateEntry() bool {
-	isComitted := make(chan bool)
+func (r *RaftNode) replicateEntry(ctx context.Context) bool {
+	committedCh := make(chan bool)
 	// TODO signal raft main thread
 	// r.stateChange <- _NewAppendEntry
-	go r.appendEntries(false, isComitted)
+	go r.appendEntries(false, committedCh)
 
 	// wait until committed
-	<-isComitted
-	return true
+	select {
+	case comitted := <-committedCh:
+		return comitted
+	case <-ctx.Done():
+		return false
+	}
 }
 
-func (r *RaftNode) appendEntries(isHeartbeat bool, isCommitted chan<- bool) {
+func (r *RaftNode) appendEntries(isHeartbeat bool, committedCh chan<- bool) {
 	r.log.indexLock.RLock()
 	lastIndex := r.log.lastIndex
 	r.log.indexLock.RUnlock()
 
 	r.membership.stateLock.RLock()
 	var completedCh = make(chan bool)
-	for address, _ := range r.membership.replicatedState {
+	for address := range r.membership.replicatedState {
 		if address != r.address {
 			go func() {
-				r.singleAppendEntries(address, isHeartbeat)
-				completedCh <- true
+				completedCh <- r.singleAppendEntries(address, isHeartbeat)
 			}()
 		}
 	}
@@ -214,29 +211,34 @@ func (r *RaftNode) appendEntries(isHeartbeat bool, isCommitted chan<- bool) {
 	// if single server, just commit
 	if totalNodes == 1 {
 		r.log.commitEntries(lastIndex)
-		isCommitted <- true
+		committedCh <- true
 		return
 	}
 	// this waits at least for majority of RPC to complete replication
 	// somewhat a partial barrier (for majority of goroutines)
 	majority := totalNodes/2 + 1
+	var signaled = false
 	var successCount = 0
-	for {
-		<-completedCh
-		successCount++
-		fmt.Println(successCount, majority, totalNodes)
-		if successCount == (majority - 1) {
-			// if majority has replicated, notify replication's committed
-			r.log.commitEntries(lastIndex)
-			isCommitted <- true
+	for i := 0; i < totalNodes; i++ {
+		replicated := <-completedCh
+		if replicated {
+			successCount++
+			log.Printf("%d successful replication\n", successCount)
+			if successCount == (majority - 1) {
+				// if majority has replicated, notify replication's committed
+				log.Println("Successfully committed")
+				r.log.commitEntries(lastIndex)
+				committedCh <- true
+				signaled = true
+			}
 		}
-		if successCount == (totalNodes - 1) {
-			return
-		}
+	}
+	if !signaled {
+		committedCh <- false
 	}
 }
 
-func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) {
+func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) bool {
 	targetClient := r.raftClient[address]
 	var appendSuccessful = false
 
@@ -280,7 +282,8 @@ func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) {
 		}
 
 		// create RPC
-		ctx, _ := context.WithTimeout(context.Background(), SERVER_RPC_TIMEOUT)
+		ctx, cancel := context.WithTimeout(context.Background(), SERVER_RPC_TIMEOUT)
+		defer cancel()
 		result, err := targetClient.AppendEntries(ctx, &args)
 
 		// if error, stop
@@ -289,15 +292,15 @@ func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) {
 			break
 		}
 
-		// if call is not set to retry until log matches
-		if isHeartbeat {
-			break
-		}
-
 		// follower term is newer than this term, immediately step down
 		if result.Term > r.currentTerm {
 			r.stateChange <- _StepDown
 		}
+		// if call is for heartbeat
+		if isHeartbeat {
+			break
+		}
+
 		// check if append is successful
 		r.indexLock.Lock()
 		if !result.Success {
@@ -310,6 +313,7 @@ func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) {
 		}
 		r.indexLock.Unlock()
 	}
+	return appendSuccessful
 }
 
 func (r *RaftNode) requestVotes() {

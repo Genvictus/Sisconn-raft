@@ -32,8 +32,16 @@ func (s *ServiceServer) Get(ctx context.Context, in *pb.KeyedRequest) (*pb.Value
 func (s *ServiceServer) Set(ctx context.Context, in *pb.KeyValuedRequest) (*pb.MessageResponse, error) {
 	log.Println("set key:", in.Key, "with value:", in.Value)
 	s.Server.log.appendLog(s.Server.currentTerm, in.Key, in.Value)
-	s.Server.replicateEntry()
-	return &pb.MessageResponse{Response: "OK"}, nil
+	// Replicate Entries to commit
+	commitCtx, cancel := context.WithTimeout(context.Background(), REPLICATION_TIMEOUT)
+	defer cancel()
+	var response string
+	if s.Server.replicateEntry(commitCtx) {
+		response = "Pending"
+	} else {
+		response = "OK"
+	}
+	return &pb.MessageResponse{Response: response}, nil
 }
 
 func (s *ServiceServer) Strln(ctx context.Context, in *pb.KeyedRequest) (*pb.ValueResponse, error) {
@@ -45,15 +53,26 @@ func (s *ServiceServer) Del(ctx context.Context, in *pb.KeyedRequest) (*pb.Value
 	log.Println("del key:", in.Key)
 	val := s.Server.log.get(in.Key)
 	s.Server.log.appendLog(s.Server.currentTerm, _DELETE_KEY, in.Key)
-	s.Server.replicateEntry()
+	// Replicate Entries to commit
+	commitCtx, cancel := context.WithTimeout(context.Background(), REPLICATION_TIMEOUT)
+	defer cancel()
+	s.Server.replicateEntry(commitCtx)
 	return &pb.ValueResponse{Value: val}, nil
 }
 
 func (s *ServiceServer) Append(ctx context.Context, in *pb.KeyValuedRequest) (*pb.MessageResponse, error) {
 	log.Println("append key:", in.Key, "with", in.Value)
 	s.Server.log.appendLog(s.Server.currentTerm, in.Key, s.Server.log.get(in.Key)+in.Value)
-	s.Server.replicateEntry()
-	return &pb.MessageResponse{Response: "OK"}, nil
+	// Replicate Entries to commit
+	commitCtx, cancel := context.WithTimeout(context.Background(), REPLICATION_TIMEOUT)
+	defer cancel()
+	var response string
+	if s.Server.replicateEntry(commitCtx) {
+		response = "Pending"
+	} else {
+		response = "OK"
+	}
+	return &pb.MessageResponse{Response: response}, nil
 }
 
 func (s *ServiceServer) ReqLog(ctx context.Context, in *pb.LogRequest) (*pb.LogResponse, error) {
@@ -73,8 +92,16 @@ func (s *ServiceServer) Commit(ctx context.Context, in *pb.CommitRequest) (*pb.M
 		entries = append(entries, TransactionEntry{command: entry.Type, key: entry.Key, value: entry.Value})
 	}
 	s.Server.log.appendTransaction(s.Server.currentTerm, entries)
-	s.Server.replicateEntry()
-	return &pb.MessageResponse{Response: "OK (" + strconv.Itoa(len(entries)) + " commands executed)"}, nil
+	// Replicate Entries to commit
+	commitCtx, cancel := context.WithTimeout(context.Background(), REPLICATION_TIMEOUT)
+	defer cancel()
+	var response string
+	if s.Server.replicateEntry(commitCtx) {
+		response = "Pending"
+	} else {
+		response = "OK"
+	}
+	return &pb.MessageResponse{Response: response + " (" + strconv.Itoa(len(entries)) + " commands execution)"}, nil
 }
 
 func (s *ServiceServer) AddNode(ctx context.Context, in *pb.KeyValuedRequest) (*pb.MessageResponse, error) {
@@ -129,3 +156,7 @@ func (s *RaftServer) RequestVote(ctx context.Context, in *pb.RequestVoteArg) (*p
 
 	return &pb.VoteResult{VoteGranted: false}, nil
 }
+
+// func (s *RaftServer) AppendEntries(ctx context.Context, in *pb.AppendEntriesArg) (*pb.AppendResult, error) {
+
+// }

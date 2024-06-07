@@ -6,6 +6,7 @@ import "time"
 var CLIENT_TIMEOUT time.Duration = 500 * time.Millisecond
 
 var SERVER_RPC_TIMEOUT time.Duration = 500 * time.Millisecond
+var REPLICATION_TIMEOUT time.Duration = 500 * time.Millisecond
 
 var (
 	HEARTBEAT_INTERVAL   time.Duration = 1000 * time.Millisecond
