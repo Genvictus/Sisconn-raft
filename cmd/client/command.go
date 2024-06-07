@@ -3,6 +3,7 @@ package main
 import (
 	pb "Sisconn-raft/raft/raftpc"
 	t "Sisconn-raft/raft/transport"
+	"bytes"
 	"log"
 	"net/http"
 
@@ -350,7 +351,6 @@ func Commit() string {
 }
 
 func requestLog() string {
-	// TODO
 	fmt.Println("Request Log", targetServer)
 
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
@@ -362,9 +362,18 @@ func requestLog() string {
 		return err.Error()
 	}
 
-	fmt.Println(r.GetLogEntries())
-	// TODO print log entries as messages
-	return ""
+	var buffer bytes.Buffer
+	buffer.WriteString("Log Entries:\n")
+	for i, entry := range r.GetLogEntries() {
+		buffer.WriteString(fmt.Sprintf("Entry %d:\n", i+1))
+		buffer.WriteString(fmt.Sprintf("\tTerm: %d\n", entry.Term))
+		buffer.WriteString(fmt.Sprintf("\tKey: %s\n", entry.Key))
+		buffer.WriteString(fmt.Sprintf("\tValue: %s\n", entry.Value))
+	}
+	formattedLog := buffer.String()
+	fmt.Println(formattedLog)
+
+	return formattedLog
 }
 
 func changeServer(args []string) {
@@ -398,7 +407,7 @@ func listenWeb(args []string) {
 	http.HandleFunc("/append", loggingMiddleware(handleAppend))
 	http.HandleFunc("/request-log", loggingMiddleware(handleRequestLog))
 
-	fmt.Println("Starting HTTP server on", address)
+	fmt.Println("Starting HTTP server on", &address)
 	err = http.ListenAndServe(address.String(), nil)
 	if err != nil {
 		fmt.Println("Error starting HTTP server:", err)

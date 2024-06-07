@@ -66,7 +66,7 @@ export default function APIManager({
 
     const handleRequestLog = () => {
         appendLog(`Requesting Log`);
-        axiosRequest('request-Log');
+        axiosRequest('request-log');
     };
 
     return (
