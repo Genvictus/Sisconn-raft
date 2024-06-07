@@ -127,6 +127,8 @@ func (k *keyValueReplication) appendTransaction(term uint64, entries []Transacti
 		} else {
 			newval = entry.value
 		}
+		k.replicatedState[entry.key] = newval
+		
 		// append and update index
 		k.logEntries = append(k.logEntries, keyValueReplicationEntry{term: term, key: entry.key, value: newval})
 		k.lastIndex++
