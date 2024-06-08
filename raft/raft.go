@@ -75,7 +75,7 @@ func NewNode(address string) *RaftNode {
 	return &new
 }
 
-func (r *RaftNode) AddConnections(targets []string) {
+func (r *RaftNode) AddConnections(targets []string) bool {
 	r.connLock.Lock()
 	defer r.connLock.Unlock()
 
@@ -91,7 +91,7 @@ func (r *RaftNode) AddConnections(targets []string) {
 			if err != nil {
 				// TODO write log
 				conn.Close()
-				return
+				return false
 			}
 
 			// if successful, add connections
@@ -103,6 +103,7 @@ func (r *RaftNode) AddConnections(targets []string) {
 		r.membership.appendLog(r.currentTerm, address, _NodeActive)
 	}
 	r.membership.commitEntries(r.membership.lastIndex)
+	return true
 }
 
 func (r *RaftNode) RemoveConnections(targets []string) {
@@ -340,6 +341,7 @@ func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) bool {
 			// decrement the index for next appendEntries()
 			// TODO probably faulty
 			r.nextIndex[address]--
+			log.Printf("decrement nextIndex of %s to %d\n", address, r.nextIndex[address])
 		} else {
 			appendSuccessful = true
 			// update the index
@@ -503,8 +505,12 @@ func (r *RaftNode) compareTerm(receivedTerm uint64) {
 // additional funcs to help with implementation
 func (r *RaftNode) getFollowerIndex(address string) (uint64, uint64) {
 	r.indexLock.RLock()
+	if _, ok := r.nextIndex[address]; !ok {
+		r.nextIndex[address] = 1
+	}
 	var prevLogIndex = r.nextIndex[address] - 1
 	r.indexLock.RUnlock()
+	log.Println(prevLogIndex)
 	var prevLogTerm = r.log.getEntries(prevLogIndex, prevLogIndex)[0].term
 
 	return prevLogIndex, prevLogTerm
