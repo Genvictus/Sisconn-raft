@@ -3,6 +3,7 @@ package raft
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -34,48 +35,39 @@ func SetRaftIntervals(heartbeat time.Duration, election_min time.Duration, elect
 
 func LoadRaftConfig() {
 	// from os.env
-	timeoutClientStr := os.Getenv("CLIENT_TIMEOUT") + "ms"
-	timeoutClient, err := time.ParseDuration(timeoutClientStr)
+	timeoutClientInt, err := strconv.Atoi(os.Getenv("CLIENT_TIMEOUT"))
+	timeoutClient := time.Duration(timeoutClientInt) * time.Millisecond
 	if err != nil {
-		// Use default value
 		timeoutClient = CLIENT_TIMEOUT
 	}
 
-	timeoutServerStr := os.Getenv("SERVER_RPC_TIMEOUT") + "ms"
-	timeoutServer, err := time.ParseDuration(timeoutServerStr)
+	timeoutServerInt, err := strconv.Atoi(os.Getenv("SERVER_RPC_TIMEOUT"))
+	timeoutServer := time.Duration(timeoutServerInt) * time.Millisecond
 	if err != nil {
-		// Use default value
-		// log.Println(err)
 		timeoutServer = SERVER_RPC_TIMEOUT
 	}
 
-	heartbeatStr := os.Getenv("HEARTBEAT_INTERVAL") + "ms"
-	heartbeat, err := time.ParseDuration(heartbeatStr)
+	heartbeatInt, err := strconv.Atoi(os.Getenv("HEARTBEAT_INTERVAL"))
+	heartbeat := time.Duration(heartbeatInt) * time.Millisecond
 	if err != nil {
-		// Use default value
 		heartbeat = HEARTBEAT_INTERVAL
 	}
 
-	electionMinStr := os.Getenv("ELECTION_TIMEOUT_MIN") + "ms"
-
-	electionMin, err := time.ParseDuration(electionMinStr)
+	electionMinInt, err := strconv.Atoi(os.Getenv("ELECTION_TIMEOUT_MIN"))
+	electionMin := time.Duration(electionMinInt) * time.Millisecond
 	if err != nil {
-		// Use default value
 		electionMin = ELECTION_TIMEOUT_MIN
 	}
 
-	electionMaxStr := os.Getenv("ELECTION_TIMEOUT_MAX") + "ms"
-	electionMax, err := time.ParseDuration(electionMaxStr)
+	electionMaxInt, err := strconv.Atoi(os.Getenv("ELECTION_TIMEOUT_MAX"))
+	electionMax := time.Duration(electionMaxInt) * time.Millisecond
 	if err != nil {
-		// Use default value
 		electionMax = ELECTION_TIMEOUT_MAX
 	}
 
 	SetClientTimeout(timeoutClient)
 	SetServerRPCTimeout(timeoutServer)
 	SetRaftIntervals(heartbeat, electionMin, electionMax)
-
-	// PrintConfig()
 }
 
 func PrintConfig() {
