@@ -1,7 +1,6 @@
-package test
+package raft
 
 import (
-	"Sisconn-raft/raft"
 	pb "Sisconn-raft/raft/raftpc"
 	"Sisconn-raft/raft/transport"
 	"context"
@@ -28,7 +27,7 @@ func TestMain(m *testing.M) {
 	}
 	defer lis.Close()
 
-	raftNode := raft.NewNode(serverAddress.String())
+	raftNode := NewNode(serverAddress.String())
 	raftNode.AddConnections([]string{serverAddress.String()})
 	go startGRPCServer(raftNode, lis)
 
@@ -302,9 +301,9 @@ func TestRequestVote(t *testing.T) {
 
 	// Server1 (Follower)
 	serverAddress1 := transport.NewAddress("localhost", 2001)
-	raftNode1 := raft.NewNode(serverAddress1.String())
+	raftNode1 := NewNode(serverAddress1.String())
 
-	raftServer1 := &raft.RaftServer{Server: raftNode1}
+	raftServer1 := &RaftServer{Server: raftNode1}
 	lis1, err := net.Listen("tcp", serverAddress1.String())
 	if err != nil {
 		t.Fatalf("Failed to listen for the first server: %v", err)
@@ -316,8 +315,8 @@ func TestRequestVote(t *testing.T) {
 
 	// Server2 (Candidate)
 	serverAddress2 := transport.NewAddress("localhost", 2002)
-	raftNode2 := raft.NewNode(serverAddress2.String())
-	raftServer2 := &raft.RaftServer{Server: raftNode2}
+	raftNode2 := NewNode(serverAddress2.String())
+	raftServer2 := &RaftServer{Server: raftNode2}
 
 	lis2, err := net.Listen("tcp", serverAddress2.String())
 	if err != nil {
@@ -349,12 +348,12 @@ func TestRequestVote(t *testing.T) {
 		t.Errorf("Expected VoteGranted: %v, but got: %v", expectedVoteGranted, voteResponse.VoteGranted)
 	}
 
-	if raftNode2.GetVotedFor() != request.CandidateId {
-		t.Errorf("Expected votedFor: %s, but got: %s", request.CandidateId, raftNode2.GetVotedFor())
+	if raftNode2.votedFor != request.CandidateId {
+		t.Errorf("Expected votedFor: %s, but got: %s", request.CandidateId, raftNode2.votedFor)
 	}
 
 	// Rejected request
-	raftNode2.SetCurrentTerm(2)
+	raftNode2.currentTerm = 2
 
 	voteResponse, err = raftServer2.RequestVote(ctx, request)
 	if err != nil {
@@ -366,9 +365,9 @@ func TestRequestVote(t *testing.T) {
 	}
 }
 
-func startGRPCServer(node *raft.RaftNode, lis net.Listener) {
+func startGRPCServer(node *RaftNode, lis net.Listener) {
 	grpcServer := grpc.NewServer()
-	pb.RegisterRaftServiceServer(grpcServer, &raft.ServiceServer{Server: node})
-	pb.RegisterRaftServer(grpcServer, &raft.RaftServer{Server: node})
+	pb.RegisterRaftServiceServer(grpcServer, &ServiceServer{Server: node})
+	pb.RegisterRaftServer(grpcServer, &RaftServer{Server: node})
 	grpcServer.Serve(lis)
 }

@@ -1,13 +1,12 @@
-package test
+package transport
 
 import (
-	"Sisconn-raft/raft/transport"
 	"fmt"
 	"testing"
 )
 
 func TestAddress(t *testing.T) {
-	address := transport.Address {
+	address := Address {
 		IP: "localhost",
 		Port: 6969,
 	}
@@ -22,7 +21,7 @@ func TestAddress(t *testing.T) {
 }
 
 func TestNewAddress(t *testing.T) {
-	address := transport.NewAddress("localhost", 6969)
+	address := NewAddress("localhost", 6969)
 
 	if address.IP != "localhost" {
 		t.Error("IP address not destructed properly, expected", "localhost", "got", address.IP)
@@ -34,7 +33,7 @@ func TestNewAddress(t *testing.T) {
 }
 
 func TestAddress_String(t *testing.T) {
-	address := transport.NewAddress("localhost", 6969)
+	address := NewAddress("localhost", 6969)
 
 	addressString := address.String()
 	if addressString != "localhost:6969" {
@@ -48,12 +47,12 @@ func TestAddress_String(t *testing.T) {
 }
 
 func TestAddress_Equal(t *testing.T) {
-	address1 := transport.Address {
+	address1 := Address {
 		IP: "localhost",
 		Port: 6969,
 	}
-	address2 := transport.NewAddress("localhost", 6969)
-	address3 := transport.NewAddress("lcoalhost", 6420)
+	address2 := NewAddress("localhost", 6969)
+	address3 := NewAddress("lcoalhost", 6420)
 
 	if address1 != address2 {
 		t.Error("Address", &address1, "should be equal to", &address2)

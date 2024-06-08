@@ -145,7 +145,7 @@ func (r *RaftNode) Run() {
 		case _Candidate:
 			r.requestVotes()
 		case _Follower:
-			timer := time.NewTimer(RandMs(ELECTION_TIMEOUT_MIN, ELECTION_TIMEOUT_MAX))
+			timer := time.NewTimer(randMs(ELECTION_TIMEOUT_MIN, ELECTION_TIMEOUT_MAX))
 			select {
 			case <-timer.C:
 				// Reached random timeout, begin election
@@ -343,7 +343,7 @@ func (r *RaftNode) requestVotes() {
 		}
 	}
 
-	electionDuration := time.NewTimer(RandMs(ELECTION_TIMEOUT_MIN, ELECTION_TIMEOUT_MAX))
+	electionDuration := time.NewTimer(randMs(ELECTION_TIMEOUT_MIN, ELECTION_TIMEOUT_MAX))
 
 	totalNodes := r.countNodes(true)
 	for {

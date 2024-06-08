@@ -1,7 +1,6 @@
-package test
+package raft
 
 import (
-	"Sisconn-raft/raft"
 	"testing"
 	"time"
 )
@@ -35,7 +34,7 @@ func TestRandMs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("TestRandMs", func(t *testing.T) {
-			randDuration := raft.RandMs(tt.minDuration, tt.maxDuration)
+			randDuration := randMs(tt.minDuration, tt.maxDuration)
 			if randDuration < tt.minDuration || randDuration > tt.maxDuration {
 				t.Errorf("Expected duration between %d and %d, got %d", tt.minDuration, tt.maxDuration, randDuration)
 			}

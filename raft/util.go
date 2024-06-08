@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func RandMs(minDuration time.Duration, maxDuration time.Duration) time.Duration {
+func randMs(minDuration time.Duration, maxDuration time.Duration) time.Duration {
 	randRange := maxDuration.Milliseconds() - minDuration.Milliseconds()
 	randDuration := rand.Int63n(randRange)
 	randDuration += minDuration.Milliseconds()

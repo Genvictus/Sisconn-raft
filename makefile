@@ -1,7 +1,7 @@
 PROTO_PATH="raft/raftpc/proto"
 
 go-test:
-	go test ./test/... ./raft ./raft/transport -coverprofile out/coverage
+	go test ./raft ./raft/transport -coverprofile out/coverage
 	go tool cover -html out/coverage -o out/coverage.html
 
 raft-service-proto:
