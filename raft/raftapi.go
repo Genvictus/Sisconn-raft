@@ -179,15 +179,24 @@ func (s *ServiceServer) Commit(ctx context.Context, in *pb.CommitRequest) (*pb.M
 }
 
 func (s *ServiceServer) AddNode(ctx context.Context, in *pb.KeyValuedRequest) (*pb.MessageResponse, error) {
-	if s.Server.address != s.Server.leaderAddress {
+	if s.Server.currentState.Load() != _Leader {
 		return &pb.MessageResponse{
 			Response:      NotLeaderResponse + s.Server.leaderAddress,
 			LeaderAddress: s.Server.leaderAddress,
 		}, nil
 	}
-	log.Println("add node")
+	log.Println("Adding node " + in.GetKey())
+	success := s.Server.AddConnections([]string{
+		in.GetKey(),
+	})
+	// s.Server.membership.appendLog(s.Server.currentTerm, in.GetKey(), _NodeInactive)
+
+	response := "Internal Server Error"
+	if success {
+		response = "OK"
+	}
 	return &pb.MessageResponse{
-		Response:      "Not Implemented",
+		Response:      response,
 		LeaderAddress: "",
 	}, nil
 }
@@ -199,9 +208,14 @@ func (s *ServiceServer) RemoveNode(ctx context.Context, in *pb.KeyedRequest) (*p
 			LeaderAddress: s.Server.leaderAddress,
 		}, nil
 	}
-	log.Println("add node")
+	log.Println("Removing node " + in.Key)
+	s.Server.RemoveConnections([]string{
+		in.GetKey(),
+	})
+	// s.Server.raftState.membership.appendLog(s.Server.currentTerm, _DELETE_KEY, in.Key)
+
 	return &pb.MessageResponse{
-		Response:      "Not Implemented",
+		Response:      "OK",
 		LeaderAddress: "",
 	}, nil
 }
@@ -256,6 +270,7 @@ func (s *RaftServer) AppendEntries(ctx context.Context, in *pb.AppendEntriesArg)
 	// 1. Reply false if term < currentTerm (§5.1)
 	// implies requesting node is outdated
 	if in.Term < currentTerm {
+		log.Println("Request failed: outdated term")
 		res.Success = false
 		return &res, nil
 	} else {
@@ -278,6 +293,7 @@ func (s *RaftServer) AppendEntries(ctx context.Context, in *pb.AppendEntriesArg)
 	s.Server.log.indexLock.RUnlock()
 	if lastIndex < in.PrevLogIndex {
 		// if index is out of bound (newer entries)
+		log.Println("Request failed: ")
 		res.Success = false
 		return &res, nil
 	}
@@ -310,5 +326,6 @@ func (s *RaftServer) AppendEntries(ctx context.Context, in *pb.AppendEntriesArg)
 		go s.Server.log.commitEntries(min(in.LeaderCommit, lastIndex))
 	}
 
+	res.Success = true
 	return &res, nil
 }
