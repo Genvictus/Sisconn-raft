@@ -19,7 +19,7 @@ type ServiceServer struct {
 func (s *ServiceServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.MessageResponse, error) {
 	log.Println(s.Server.address)
 	log.Println(s.Server.leaderAddress)
-	if s.Server.currentState != _Leader {
+	if s.Server.currentState.Load() != _Leader {
 		return &pb.MessageResponse{
 			Response:      NotLeaderResponse + s.Server.leaderAddress,
 			LeaderAddress: s.Server.leaderAddress,
@@ -35,7 +35,7 @@ func (s *ServiceServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.Messa
 }
 
 func (s *ServiceServer) Get(ctx context.Context, in *pb.KeyedRequest) (*pb.ValueResponse, error) {
-	if s.Server.currentState != _Leader {
+	if s.Server.currentState.Load() != _Leader {
 		return &pb.ValueResponse{
 			Value:         NotLeaderResponse + s.Server.leaderAddress,
 			LeaderAddress: s.Server.leaderAddress,
@@ -50,7 +50,7 @@ func (s *ServiceServer) Get(ctx context.Context, in *pb.KeyedRequest) (*pb.Value
 }
 
 func (s *ServiceServer) Set(ctx context.Context, in *pb.KeyValuedRequest) (*pb.MessageResponse, error) {
-	if s.Server.currentState != _Leader {
+	if s.Server.currentState.Load() != _Leader {
 		return &pb.MessageResponse{
 			Response:      NotLeaderResponse + s.Server.leaderAddress,
 			LeaderAddress: s.Server.leaderAddress,
@@ -74,7 +74,7 @@ func (s *ServiceServer) Set(ctx context.Context, in *pb.KeyValuedRequest) (*pb.M
 }
 
 func (s *ServiceServer) Strln(ctx context.Context, in *pb.KeyedRequest) (*pb.ValueResponse, error) {
-	if s.Server.currentState != _Leader {
+	if s.Server.currentState.Load() != _Leader {
 		return &pb.ValueResponse{
 			Value:         NotLeaderResponse + s.Server.leaderAddress,
 			LeaderAddress: s.Server.leaderAddress,
@@ -88,7 +88,7 @@ func (s *ServiceServer) Strln(ctx context.Context, in *pb.KeyedRequest) (*pb.Val
 }
 
 func (s *ServiceServer) Del(ctx context.Context, in *pb.KeyedRequest) (*pb.ValueResponse, error) {
-	if s.Server.currentState != _Leader {
+	if s.Server.currentState.Load() != _Leader {
 		return &pb.ValueResponse{
 			Value:         NotLeaderResponse + s.Server.leaderAddress,
 			LeaderAddress: s.Server.leaderAddress,
@@ -108,7 +108,7 @@ func (s *ServiceServer) Del(ctx context.Context, in *pb.KeyedRequest) (*pb.Value
 }
 
 func (s *ServiceServer) Append(ctx context.Context, in *pb.KeyValuedRequest) (*pb.MessageResponse, error) {
-	if s.Server.currentState != _Leader {
+	if s.Server.currentState.Load() != _Leader {
 		return &pb.MessageResponse{
 			Response:      NotLeaderResponse + s.Server.leaderAddress,
 			LeaderAddress: s.Server.leaderAddress,
@@ -132,7 +132,7 @@ func (s *ServiceServer) Append(ctx context.Context, in *pb.KeyValuedRequest) (*p
 }
 
 func (s *ServiceServer) ReqLog(ctx context.Context, in *pb.LogRequest) (*pb.LogResponse, error) {
-	if s.Server.currentState != _Leader {
+	if s.Server.currentState.Load() != _Leader {
 		return &pb.LogResponse{
 			LogEntries:    nil,
 			LeaderAddress: s.Server.leaderAddress,
@@ -150,7 +150,7 @@ func (s *ServiceServer) ReqLog(ctx context.Context, in *pb.LogRequest) (*pb.LogR
 }
 
 func (s *ServiceServer) Commit(ctx context.Context, in *pb.CommitRequest) (*pb.MessageResponse, error) {
-	if s.Server.currentState != _Leader {
+	if s.Server.currentState.Load() != _Leader {
 		return &pb.MessageResponse{
 			Response:      NotLeaderResponse + s.Server.leaderAddress,
 			LeaderAddress: s.Server.leaderAddress,
@@ -193,7 +193,7 @@ func (s *ServiceServer) AddNode(ctx context.Context, in *pb.KeyValuedRequest) (*
 }
 
 func (s *ServiceServer) RemoveNode(ctx context.Context, in *pb.KeyedRequest) (*pb.MessageResponse, error) {
-	if s.Server.currentState != _Leader {
+	if s.Server.currentState.Load() != _Leader {
 		return &pb.MessageResponse{
 			Response:      NotLeaderResponse + s.Server.leaderAddress,
 			LeaderAddress: s.Server.leaderAddress,
@@ -255,10 +255,19 @@ func (s *RaftServer) AppendEntries(ctx context.Context, in *pb.AppendEntriesArg)
 		Term: currentTerm,
 	}
 	// 1. Reply false if term < currentTerm (§5.1)
+	// implies requesting node is outdated
 	if in.Term < currentTerm {
 		res.Success = false
 		return &res, nil
+	} else {
+		s.Server.compareTerm(in.Term)
 	}
+	// if node is follower, refresh election timer
+	if s.Server.currentState.Load() == _Follower {
+		// request is valid, refresh follower
+		s.Server.stateChange <- _RefreshFollower
+	}
+
 	// 2. Reply false if log doesn’t contain an entry at prevLogIndex
 	// whose term matches prevLogTerm (§5.3)
 	if s.Server.log.lastIndex < in.PrevLogIndex {
@@ -294,6 +303,8 @@ func (s *RaftServer) AppendEntries(ctx context.Context, in *pb.AppendEntriesArg)
 	lastIndex := s.Server.log.lastIndex
 	s.Server.log.indexLock.RUnlock()
 	if in.LeaderCommit > commitIndex {
+		// should be long running, especially if this deals with persistence
+		// i.e. writing to stable storage
 		go s.Server.log.commitEntries(min(in.LeaderCommit, lastIndex))
 	}
 

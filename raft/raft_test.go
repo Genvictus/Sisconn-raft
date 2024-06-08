@@ -21,7 +21,7 @@ func TestNewNode(t *testing.T) {
 		t.Errorf("Node address is incorrect Expected: %s, but got: %s", serverAddress.String(), node.address)
 	}
 
-	if node.currentState != 0 {
+	if node.currentState.Load() != 0 {
 		t.Errorf("Node current state is incorrect Expected: %d, but got: %d", 0, node.currentState)
 	}
 }

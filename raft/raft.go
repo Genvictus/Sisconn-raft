@@ -5,6 +5,7 @@ import (
 	"context"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"google.golang.org/grpc"
@@ -15,11 +16,11 @@ type raftState struct {
 	// also used as server ID
 	address string
 
-	raftLock sync.RWMutex
 	// current node's state (follower, candidate, leader)
-	currentState  uint
-	leaderAddress string
+	currentState atomic.Uint32
 
+	raftLock      sync.RWMutex
+	leaderAddress string
 	// persistent states, at least in the paper
 	currentTerm uint64
 	votedFor    string
@@ -52,10 +53,10 @@ type RaftNode struct {
 }
 
 func NewNode(address string) *RaftNode {
-	return &RaftNode{
+	new := RaftNode{
 		raftState: raftState{
 			address:      address,
-			currentState: _Follower,
+			currentState: atomic.Uint32{},
 
 			// currentTerm: 0,
 			// votedFor: "",
@@ -70,6 +71,8 @@ func NewNode(address string) *RaftNode {
 
 		stateChange: make(chan uint),
 	}
+	new.currentState.Store(_Follower)
+	return &new
 }
 
 func (r *RaftNode) AddConnections(targets []string) {
@@ -119,13 +122,13 @@ func (r *RaftNode) RemoveConnections(targets []string) {
 
 func (r *RaftNode) Run() {
 	for {
-		switch r.currentState {
+		switch r.currentState.Load() {
 		case _Leader:
 			timer := time.NewTimer(HEARTBEAT_INTERVAL)
 			select {
 			case <-timer.C:
 				// send heartbeat, synchronize log content at that
-				r.appendEntries(true, nil)
+				go r.appendEntries(true, nil)
 			case change := <-r.stateChange:
 				if !timer.Stop() {
 					<-timer.C
@@ -133,9 +136,7 @@ func (r *RaftNode) Run() {
 				// received notification, check which to do
 				switch change {
 				case _StepDown:
-					r.raftLock.Lock()
-					r.currentState = _Follower
-					r.raftLock.Unlock()
+					r.currentState.Store(_Follower)
 				case _NewAppendEntry:
 					// server received new command from client, append entry sent
 					// do nothing, let the timer refresh
@@ -144,22 +145,48 @@ func (r *RaftNode) Run() {
 
 		case _Candidate:
 			r.requestVotes()
+
 		case _Follower:
 			timer := time.NewTimer(randMs(ELECTION_TIMEOUT_MIN, ELECTION_TIMEOUT_MAX))
 			select {
 			case <-timer.C:
 				// Reached random timeout, begin election
-				r.currentState = _Candidate
+				r.currentState.Store(_Follower)
 			case change := <-r.stateChange:
 				if !timer.Stop() {
 					<-timer.C
 				}
 				switch change {
-				case _StepDown:
-					r.raftLock.Lock()
-					r.currentState = _Follower
-					r.raftLock.Unlock()
+				case _RefreshFollower:
+					// received new AppendEntries, leader still alive,
+					// do nothing
 				}
+			}
+		}
+	}
+}
+
+func (r *RaftNode) runTest() {
+	for {
+		switch r.currentState.Load() {
+		case _Leader:
+			change := <-r.stateChange
+			// received notification, check which to do
+			switch change {
+			case _StepDown:
+				r.currentState.Store(_Follower)
+			case _NewAppendEntry:
+				// server received new command from client, append entry sent
+				// do nothing, let the timer refresh
+			}
+
+		case _Candidate:
+			r.requestVotes()
+		case _Follower:
+			change := <-r.stateChange
+			switch change {
+			case _StepDown:
+				// do nothing
 			}
 		}
 	}
@@ -193,6 +220,9 @@ func (r *RaftNode) replicateEntry(ctx context.Context) bool {
 }
 
 func (r *RaftNode) appendEntries(isHeartbeat bool, committedCh chan<- bool) {
+	// refresh heartbeat timer, appendEntries can only done by leaders
+	r.stateChange <- _NewAppendEntry
+
 	r.log.indexLock.RLock()
 	lastIndex := r.log.lastIndex
 	r.log.indexLock.RUnlock()
@@ -255,7 +285,7 @@ func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) bool {
 	for !appendSuccessful {
 		// get the current status of node
 		// if node checks that it's no longer leader, stop
-		if r.currentState != _Leader {
+		if r.currentState.Load() != _Leader {
 			break
 		}
 
@@ -297,18 +327,13 @@ func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) bool {
 		}
 
 		// follower term is newer than this term, immediately step down
-		if result.Term > r.currentTerm {
-			r.stateChange <- _StepDown
-		}
-		// if call is for heartbeat
-		if isHeartbeat {
-			break
-		}
+		r.compareTerm(result.Term)
 
 		// check if append is successful
 		r.indexLock.Lock()
 		if !result.Success {
 			// decrement the index for next appendEntries()
+			// TODO probably faulty
 			r.nextIndex[address]--
 		} else {
 			appendSuccessful = true
@@ -316,6 +341,11 @@ func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) bool {
 			r.nextIndex[address] = lastIndex + 1
 		}
 		r.indexLock.Unlock()
+
+		// if call is for heartbeat
+		if isHeartbeat {
+			break
+		}
 	}
 	return appendSuccessful
 }
@@ -358,9 +388,7 @@ func (r *RaftNode) requestVotes() {
 
 			if voteCount >= totalNodes {
 				log.Println("Election won by ", r.address)
-				r.raftLock.Lock()
-				r.currentState = _Leader
-				r.raftLock.Unlock()
+				r.currentState.Store(_Leader)
 				close(voteCh)
 				return
 			}
@@ -374,9 +402,7 @@ func (r *RaftNode) requestVotes() {
 		case <-electionDuration.C:
 			// run the election again
 			log.Println("Election timeout")
-			r.raftLock.Lock()
-			r.currentState = _Follower
-			r.raftLock.Unlock()
+			r.currentState.Store(_Follower)
 			return
 		}
 
@@ -421,6 +447,48 @@ func (r *RaftNode) singleRequestVote(address string, lastLogIndex uint64, lastLo
 		return true
 	}
 	return false
+}
+
+func (r *RaftNode) initiateLeader() {
+	// set current state as leader
+	r.currentState.Store(_Leader)
+
+	// get next log index for initialization
+	r.log.indexLock.RLock()
+	nextIndex := r.log.lastIndex + 1
+	r.log.indexLock.RUnlock()
+
+	// initialize indexes to track followers
+	r.indexLock.Lock()
+	r.nextIndex = map[string]uint64{}
+	r.matchIndex = map[string]uint64{}
+	// initiate indexes after each election
+	r.membership.stateLock.RLock()
+	for address := range r.membership.replicatedState {
+		r.nextIndex[address] = nextIndex
+		r.matchIndex[address] = 0
+	}
+	r.membership.stateLock.RUnlock()
+	r.indexLock.Unlock()
+
+	// send initial heartbeat
+	go r.appendEntries(true, nil)
+}
+
+// handles RPC request or response's term
+func (r *RaftNode) compareTerm(receivedTerm uint64) {
+	currentTerm := r.currentTerm
+	if receivedTerm > currentTerm {
+		// handle new term
+		r.raftLock.Lock()
+		r.currentTerm = receivedTerm
+		r.raftLock.Unlock()
+		switch r.currentState.Load() {
+		case _Leader:
+			// if found a newer term, current leader is stale
+			r.stateChange <- _StepDown
+		}
+	}
 }
 
 // additional funcs to help with implementation

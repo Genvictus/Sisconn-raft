@@ -181,8 +181,8 @@ func (k *keyValueReplication) get(key string) string {
 
 // Only for append function
 func (k *keyValueReplication) getLatest(key string) string {
-	k.stateLock.RLock()
+	k.logLock.RLock()
 	val := k.tempReplicatedState[key]
-	k.stateLock.RUnlock()
+	k.logLock.RUnlock()
 	return val
 }
