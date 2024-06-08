@@ -115,7 +115,6 @@ func (k *keyValueReplication) appendLog(term uint64, key string, value string) {
 	k.lastIndex++
 
 	// update temporary replicated state
-	k.tempReplicatedState[key] = value
 	if key == _DELETE_KEY {
 		delete(k.tempReplicatedState, value)
 	} else {
@@ -170,6 +169,8 @@ func (k *keyValueReplication) replaceLog(startIndex uint64, logEntries []keyValu
 	}
 	k.logEntries = append(k.logEntries[:startIndex], logEntries...)
 	k.lastIndex = startIndex - 1 + uint64(len(logEntries))
+
+	// TODO: update temporary replicated state
 
 	k.logLock.Unlock()
 	k.indexLock.Unlock()
