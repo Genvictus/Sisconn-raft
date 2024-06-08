@@ -24,19 +24,20 @@ type raftState struct {
 	// persistent states, at least in the paper
 	currentTerm uint64
 	votedFor    string
-	log         keyValueReplication
+
+	log keyValueReplication
 
 	// Volatile states, already in keyValueReplication
 	// commitIndex uint64
 	// lastApplied uint64
 
+	// Cluster Membership
+	membership keyValueReplication
+
 	// Leader States
 	indexLock  sync.RWMutex
 	nextIndex  map[string]uint64
 	matchIndex map[string]uint64
-
-	// Cluster Membership
-	membership keyValueReplication
 }
 
 type RaftNode struct {
@@ -198,14 +199,12 @@ func (r *RaftNode) runTest() {
 
 // count number of nodes in the cluster
 // isQuorum returns the quorum for the nodes majority
-func (r *RaftNode) countNodes(isQuorum bool) int {
+func (r *RaftNode) countNodes() (int, int) {
 	r.membership.logLock.RLock()
-	n := len(r.membership.replicatedState)
+	total := len(r.membership.replicatedState)
 	r.membership.logLock.RUnlock()
-	if isQuorum {
-		n = n/2 + 1
-	}
-	return n
+	quorum := total/2 + 1
+	return total, quorum
 }
 
 func (r *RaftNode) replicateEntry(ctx context.Context) bool {
@@ -244,7 +243,7 @@ func (r *RaftNode) appendEntries(isHeartbeat bool, committedCh chan<- bool) {
 	}
 	r.membership.stateLock.RUnlock()
 
-	totalNodes := r.countNodes(false)
+	totalNodes, majority := r.countNodes()
 	// if single server, just commit
 	if totalNodes == 1 {
 		r.log.commitEntries(lastIndex)
@@ -253,7 +252,6 @@ func (r *RaftNode) appendEntries(isHeartbeat bool, committedCh chan<- bool) {
 	}
 	// this waits at least for majority of RPC to complete replication
 	// somewhat a partial barrier (for majority of goroutines)
-	majority := totalNodes/2 + 1
 	var signaled = false
 	var successCount = 0
 	// check for each append entries if successful
@@ -372,8 +370,9 @@ func (r *RaftNode) requestVotes() {
 
 	// count votes
 	voteCount := 1
-	voteCh := make(chan bool, r.countNodes(false)-1)
-	retryCh := make(chan string, r.countNodes(false)-1)
+	count, _ := r.countNodes()
+	voteCh := make(chan bool, count-1)
+	retryCh := make(chan string, count-1)
 	// send vote request to all nodes
 	for address := range r.raftClient {
 		if address != r.address {
@@ -385,7 +384,7 @@ func (r *RaftNode) requestVotes() {
 
 	electionDuration := time.NewTimer(randMs(ELECTION_TIMEOUT_MIN, ELECTION_TIMEOUT_MAX))
 
-	totalNodes := r.countNodes(true)
+	_, totalNodes := r.countNodes()
 	for {
 		select {
 		case voteGranted := <-voteCh:

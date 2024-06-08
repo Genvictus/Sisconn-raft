@@ -118,12 +118,12 @@ func TestRaftNode_countNodes(t *testing.T) {
 	var nodeCount int
 	var quorum int
 
-	nodeCount = node.countNodes(false)
+	nodeCount, _ = node.countNodes()
 	if nodeCount != 5 {
 		t.Errorf("Node count is incorrect Expected: %d, but got: %d", 5, nodeCount)
 	}
 
-	quorum = node.countNodes(true)
+	_, quorum = node.countNodes()
 	if quorum != 3 {
 		t.Errorf("Quorum count is incorrect Expected: %d, but got: %d", 3, quorum)
 	}
@@ -134,12 +134,12 @@ func TestRaftNode_countNodes(t *testing.T) {
 		serverAddress8.String(),
 	})
 
-	nodeCount = node.countNodes(false)
+	nodeCount, _ = node.countNodes()
 	if nodeCount != 8 {
 		t.Errorf("Node count is incorrect Expected: %d, but got: %d", 8, nodeCount)
 	}
 
-	quorum = node.countNodes(true)
+	_, quorum = node.countNodes()
 	if quorum != 5 {
 		t.Errorf("Quorum count is incorrect Expected: %d, but got: %d", 5, quorum)
 	}
@@ -150,12 +150,12 @@ func TestRaftNode_countNodes(t *testing.T) {
 		serverAddress6.String(),
 	})
 
-	nodeCount = node.countNodes(false)
+	nodeCount, _ = node.countNodes()
 	if nodeCount != 5 {
 		t.Errorf("Node count is incorrect Expected: %d, but got: %d", 5, nodeCount)
 	}
 
-	quorum = node.countNodes(true)
+	_, quorum = node.countNodes()
 	if quorum != 3 {
 		t.Errorf("Quorum count is incorrect Expected: %d, but got: %d", 3, quorum)
 	}
@@ -257,7 +257,8 @@ func TestRaftNode_singleRequestVote(t *testing.T) {
 	lastIndex := node.log.lastIndex
 	lastTerm := node.log.getEntries(lastIndex, lastIndex)[0].term
 
-	retyCh := make(chan string, node.countNodes(false)-1)
+	total, _ := node.countNodes()
+	retyCh := make(chan string, total-1)
 
 	// vote granted
 	node.currentTerm = 2
