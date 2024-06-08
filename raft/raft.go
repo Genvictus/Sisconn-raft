@@ -389,15 +389,14 @@ func (r *RaftNode) requestVotes() {
 			if voteCount >= totalNodes {
 				log.Println("Election won by ", r.address)
 				r.currentState.Store(_Leader)
-				close(voteCh)
 				return
 			}
 		case address := <-retryCh:
 			// retry if addr is active
-			log.Println("Retrying vote request to ", address)
-			go func(addr string) {
-				voteCh <- r.singleRequestVote(addr, lastIndex, lastTerm, retryCh)
-			}(address)
+			log.Println("Vote request failed to ", address)
+			// go func(addr string) {
+			// 	voteCh <- r.singleRequestVote(addr, lastIndex, lastTerm, retryCh)
+			// }(address)
 
 		case <-electionDuration.C:
 			// run the election again
