@@ -52,7 +52,7 @@ func (s *ServiceServer) Strln(ctx context.Context, in *pb.KeyedRequest) (*pb.Val
 func (s *ServiceServer) Del(ctx context.Context, in *pb.KeyedRequest) (*pb.ValueResponse, error) {
 	log.Println("del key:", in.Key)
 	val := s.Server.log.get(in.Key)
-	s.Server.log.appendLog(s.Server.currentTerm, _DELETE_KEY, in.Key)
+	s.Server.log.appendLog(s.Server.currentTerm, in.Key, _DELETE_KEY)
 	// Replicate Entries to commit
 	commitCtx, cancel := context.WithTimeout(context.Background(), REPLICATION_TIMEOUT)
 	defer cancel()
