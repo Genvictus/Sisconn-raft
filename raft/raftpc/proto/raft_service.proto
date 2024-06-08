@@ -32,6 +32,7 @@ message KeyValuedRequest {
 
 message MessageResponse {
     string response = 1;
+    string leaderAddress = 2;
 }
 
 message KeyedRequest {
@@ -40,6 +41,7 @@ message KeyedRequest {
 
 message ValueResponse {
     string value = 1;
+    string leaderAddress = 2;
 }
 
 message LogRequest {
@@ -48,6 +50,7 @@ message LogRequest {
 
 message LogResponse {
     repeated LogEntry logEntries = 1;
+    string leaderAddress = 2;
 }
 
 message CommitEntry {
