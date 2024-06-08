@@ -165,6 +165,9 @@ func (k *keyValueReplication) replaceLog(startIndex uint64, logEntries []keyValu
 	k.indexLock.Lock()
 	k.logLock.Lock()
 
+	if k.commitIndex >= startIndex {
+		log.Panic("Trying to replace committed log!")
+	}
 	k.logEntries = append(k.logEntries[:startIndex], logEntries...)
 	k.lastIndex = startIndex - 1 + uint64(len(logEntries))
 
