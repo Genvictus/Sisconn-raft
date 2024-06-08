@@ -62,7 +62,7 @@ func (s *ServiceServer) Del(ctx context.Context, in *pb.KeyedRequest) (*pb.Value
 
 func (s *ServiceServer) Append(ctx context.Context, in *pb.KeyValuedRequest) (*pb.MessageResponse, error) {
 	log.Println("append key:", in.Key, "with", in.Value)
-	s.Server.log.appendLog(s.Server.currentTerm, in.Key, s.Server.log.get(in.Key)+in.Value)
+	s.Server.log.appendLog(s.Server.currentTerm, in.Key, s.Server.log.getLatest(in.Key)+in.Value)
 	// Replicate Entries to commit
 	commitCtx, cancel := context.WithTimeout(context.Background(), REPLICATION_TIMEOUT)
 	defer cancel()
