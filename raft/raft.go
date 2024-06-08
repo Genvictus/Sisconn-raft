@@ -122,6 +122,7 @@ func (r *RaftNode) RemoveConnections(targets []string) {
 
 func (r *RaftNode) Run() {
 	for {
+		log.Println("Current state:", r.currentState.Load())
 		switch r.currentState.Load() {
 		case _Leader:
 			timer := time.NewTimer(HEARTBEAT_INTERVAL)
@@ -151,7 +152,7 @@ func (r *RaftNode) Run() {
 			select {
 			case <-timer.C:
 				// Reached random timeout, begin election
-				r.currentState.Store(_Follower)
+				r.currentState.Store(_Candidate)
 			case change := <-r.stateChange:
 				if !timer.Stop() {
 					<-timer.C
@@ -402,8 +403,13 @@ func (r *RaftNode) requestVotes() {
 
 		case <-electionDuration.C:
 			// run the election again
-			log.Println("Election timeout")
-			r.currentState.Store(_Follower)
+			if voteCount >= totalNodes {
+				log.Println("Election won by ", r.address)
+				r.initiateLeader()
+			} else {
+				log.Println("Election timeout")
+				r.currentState.Store(_Follower)
+			}
 			return
 		}
 

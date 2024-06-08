@@ -56,6 +56,7 @@ func main() {
 
 	RaftNode = raft.NewNode(serverAddressStr)
 	RaftNode.AddConnections([]string{serverAddressStr})
+	go RaftNode.Run()
 	pb.RegisterRaftServiceServer(s, &raft.ServiceServer{Server: RaftNode})
 	pb.RegisterRaftServer(s, &raft.RaftServer{Server: RaftNode})
 
