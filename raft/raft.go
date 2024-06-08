@@ -220,8 +220,10 @@ func (r *RaftNode) appendEntries(isHeartbeat bool, committedCh chan<- bool) {
 	majority := totalNodes/2 + 1
 	var signaled = false
 	var successCount = 0
-	for i := 0; i < totalNodes; i++ {
+	// check for each append entries if successful
+	for i := 0; i < totalNodes-1; i++ {
 		replicated := <-completedCh
+		// if append entries successful (logs replicated to other nodes)
 		if replicated {
 			successCount++
 			log.Printf("%d successful replication\n", successCount)
@@ -233,6 +235,7 @@ func (r *RaftNode) appendEntries(isHeartbeat bool, committedCh chan<- bool) {
 				signaled = true
 			}
 		}
+		// continue on until all nodes has completed replication
 	}
 	if !signaled {
 		committedCh <- false
@@ -252,7 +255,7 @@ func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) bool {
 	for !appendSuccessful {
 		// get the current status of node
 		// if node checks that it's no longer leader, stop
-		if r.currentState != _Follower {
+		if r.currentState != _Leader {
 			break
 		}
 
