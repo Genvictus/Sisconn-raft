@@ -1,8 +1,13 @@
 package raft
 
 import (
+	pb "Sisconn-raft/raft/raftpc"
 	"Sisconn-raft/raft/transport"
+	"log"
+	"net"
 	"testing"
+
+	"google.golang.org/grpc"
 )
 
 func TestNewNode(t *testing.T) {
@@ -173,7 +178,65 @@ func TestRaftNode_requestVotes(t *testing.T) {
 }
 
 func TestRaftNode_singleRequestVote(t *testing.T) {
-	// TODO: Add test cases.
+	serverAddress1 := transport.NewAddress("localhost", 2000)
+	serverAddress2 := transport.NewAddress("localhost", 2004)
+	serverAddress3 := transport.NewAddress("localhost", 2005)
+	serverAddress4 := transport.NewAddress("10.255.255.1", 80)
+
+	node := NewNode(serverAddress1.String())
+	ListenServer(node, grpc.NewServer())
+	node2 := NewNode(serverAddress2.String())
+	ListenServer(node2, grpc.NewServer())
+	node3 := NewNode(serverAddress3.String())
+	ListenServer(node3, grpc.NewServer())
+
+	node.AddConnections([]string{
+		serverAddress1.String(),
+		serverAddress2.String(),
+		serverAddress3.String(),
+		serverAddress4.String(),
+	})
+
+	// Test vote request
+	lastIndex := node.log.lastIndex
+	lastTerm := node.log.getEntries(lastIndex, lastIndex)[0].term
+
+	retyCh := make(chan string, node.countNodes(false)-1)
+
+	// vote granted
+	node.currentTerm = 2
+	result := node.singleRequestVote(node2.address, lastIndex, lastTerm, retyCh)
+
+	if result != true {
+		t.Errorf("Vote request failed")
+	}
+	t.Log("Vote request success : ", result)
+
+	// step down
+	node3.currentTerm = 69
+	result = node.singleRequestVote(node3.address, lastIndex, lastTerm, retyCh)
+
+	if result != false {
+		t.Errorf("Vote request failed")
+	}
+	t.Log("Vote request failed : ", result)
+
+	// state := <-node.stateChange
+	// if state != _StepDown {
+	// 	t.Errorf("Expected state change to _StepDown, but got: %d", state)
+	// }
+
+	// error vote
+	result = node.singleRequestVote(serverAddress4.String(), lastIndex, lastTerm, retyCh)
+
+	if result != false {
+		t.Errorf("Vote request failed")
+	}
+	// check if address in retry channel
+	address := <-retyCh
+	if address != serverAddress4.String() {
+		t.Errorf("Expected address in retry channel to be %s, but got: %s", serverAddress4.String(), address)
+	}
 }
 
 func TestRaftNode_getFollowerIndex(t *testing.T) {
@@ -182,4 +245,22 @@ func TestRaftNode_getFollowerIndex(t *testing.T) {
 
 func TestRaftNode_createLogEntryArgs(t *testing.T) {
 	// TODO: Add test cases.
+}
+
+func ListenServer(node *RaftNode, server *grpc.Server) {
+	serverAddress := node.address
+	lis, err := net.Listen("tcp", serverAddress)
+
+	if err != nil {
+		log.Fatalf("failed to listen on %s", serverAddress)
+	}
+
+	go func() {
+		if err := server.Serve(lis); err != nil {
+			log.Fatalf("Failed to serve gRPC server: %v", err)
+		}
+	}()
+
+	pb.RegisterRaftServiceServer(server, &ServiceServer{Server: node})
+	pb.RegisterRaftServer(server, &RaftServer{Server: node})
 }
