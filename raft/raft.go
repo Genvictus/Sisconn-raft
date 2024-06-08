@@ -76,7 +76,7 @@ func NewNode(address string) *RaftNode {
 	return &new
 }
 
-func (r *RaftNode) AddConnections(targets []string) bool {
+func (r *RaftNode) AddConnections(targets []string) {
 	r.connLock.Lock()
 	defer r.connLock.Unlock()
 
@@ -92,7 +92,7 @@ func (r *RaftNode) AddConnections(targets []string) bool {
 			if err != nil {
 				// TODO write log
 				conn.Close()
-				return false
+				return
 			}
 
 			// if successful, add connections
@@ -104,7 +104,6 @@ func (r *RaftNode) AddConnections(targets []string) bool {
 		r.membership.appendLog(r.currentTerm, address, _NodeActive)
 	}
 	r.membership.commitEntries(r.membership.lastIndex)
-	return true
 }
 
 func (r *RaftNode) RemoveConnections(targets []string) {
@@ -339,7 +338,6 @@ func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) bool {
 			// decrement the index for next appendEntries()
 			// TODO probably faulty
 			r.nextIndex[address]--
-			log.Printf("decrement nextIndex of %s to %d\n", address, r.nextIndex[address])
 		} else {
 			appendSuccessful = true
 			// update the index
@@ -370,56 +368,34 @@ func (r *RaftNode) requestVotes() {
 
 	// count votes
 	voteCount := 1
-	count, _ := r.countNodes()
-	voteCh := make(chan bool, count-1)
-	retryCh := make(chan string, count-1)
+	voteCh := make(chan bool)
 	// send vote request to all nodes
 	for address := range r.raftClient {
 		if address != r.address {
 			go func(addr string) {
-				voteCh <- r.singleRequestVote(addr, lastIndex, lastTerm, retryCh)
+				voteCh <- r.singleRequestVote(addr, lastIndex, lastTerm)
 			}(address)
 		}
 	}
 
-	electionDuration := time.NewTimer(randMs(ELECTION_TIMEOUT_MIN, ELECTION_TIMEOUT_MAX))
-
-	_, totalNodes := r.countNodes()
-	for {
-		select {
-		case voteGranted := <-voteCh:
-			if voteGranted {
-				voteCount++
-			}
-
-			if voteCount >= totalNodes {
-				log.Println("Election won by ", r.address)
-				r.initiateLeader()
-				return
-			}
-		case address := <-retryCh:
-			// retry if addr is active
-			log.Println("Vote request failed to ", address)
-			// go func(addr string) {
-			// 	voteCh <- r.singleRequestVote(addr, lastIndex, lastTerm, retryCh)
-			// }(address)
-
-		case <-electionDuration.C:
-			// run the election again
-			if voteCount >= totalNodes {
-				log.Println("Election won by ", r.address)
-				r.initiateLeader()
-			} else {
-				log.Println("Election timeout")
-				r.currentState.Store(_Follower)
-			}
-			return
+	totalNodes, majority := r.countNodes()
+	for i := 1; i < totalNodes; i++ {
+		voteGranted := <-voteCh
+		if voteGranted {
+			voteCount++
 		}
 
+		if voteCount >= majority {
+			log.Println("Election won by ", r.address)
+			r.initiateLeader()
+			return
+		}
 	}
+	// majority not reached, revert to follower
+	r.currentState.Store(_Follower)
 }
 
-func (r *RaftNode) singleRequestVote(address string, lastLogIndex uint64, lastLogTerm uint64, retryChannel chan<- string) bool {
+func (r *RaftNode) singleRequestVote(address string, lastLogIndex uint64, lastLogTerm uint64) bool {
 	targetClient := r.raftClient[address]
 	// map?
 	lastLogIndexMap := map[uint32]uint64{0: lastLogIndex}
@@ -440,15 +416,13 @@ func (r *RaftNode) singleRequestVote(address string, lastLogIndex uint64, lastLo
 	if err != nil {
 		log.Println("Error requesting vote from ", address)
 		log.Println(err.Error())
-		retryChannel <- address
 		return false
 	}
 
 	log.Println("Vote result ", result)
 	// if follower term is newer immediately step down
 	if result.Term > r.currentTerm {
-		log.Println("Step down")
-		r.stateChange <- _StepDown
+		log.Println("Newer term detected, step down")
 		return false
 	}
 
@@ -505,11 +479,10 @@ func (r *RaftNode) compareTerm(receivedTerm uint64) {
 func (r *RaftNode) getFollowerIndex(address string) (uint64, uint64) {
 	r.indexLock.RLock()
 	if _, ok := r.nextIndex[address]; !ok {
-		r.nextIndex[address] = 1
+		r.nextIndex[address] = r.log.lastIndex + 1
 	}
 	var prevLogIndex = r.nextIndex[address] - 1
 	r.indexLock.RUnlock()
-	log.Println(prevLogIndex)
 	var prevLogTerm = r.log.getEntries(prevLogIndex, prevLogIndex)[0].term
 
 	return prevLogIndex, prevLogTerm

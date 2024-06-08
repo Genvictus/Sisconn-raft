@@ -186,15 +186,12 @@ func (s *ServiceServer) AddNode(ctx context.Context, in *pb.KeyValuedRequest) (*
 		}, nil
 	}
 	log.Println("Adding node " + in.GetKey())
-	success := s.Server.AddConnections([]string{
+	s.Server.AddConnections([]string{
 		in.GetKey(),
 	})
 	// s.Server.membership.appendLog(s.Server.currentTerm, in.GetKey(), _NodeInactive)
 
 	response := "Internal Server Error"
-	if success {
-		response = "OK"
-	}
 	return &pb.MessageResponse{
 		Response:      response,
 		LeaderAddress: "",
@@ -232,34 +229,40 @@ type RaftServer struct {
 func (s *RaftServer) RequestVote(ctx context.Context, in *pb.RequestVoteArg) (*pb.VoteResult, error) {
 	log.Println("RequestVote")
 
-	followerNode := s.Server
-
 	// fmt.Printf("RequestVote: %v\n", in.Term)
 	// fmt.Printf("Caller: %v\n", callerNode.address)
 
-	if in.Term < followerNode.currentTerm {
-		return &pb.VoteResult{VoteGranted: false}, nil
+	result := pb.VoteResult{
+		Term: s.Server.currentTerm,
 	}
 
-	if followerNode.votedFor == "" || followerNode.votedFor == in.CandidateId {
+	if in.Term < s.Server.currentTerm {
+		result.VoteGranted = false
+		return &result, nil
+	}
 
-		followerLog := &followerNode.log
+	if s.Server.votedFor == "" || s.Server.votedFor == in.CandidateId {
+
+		followerLog := &s.Server.log
 
 		if followerLog.lastIndex == 0 {
-			followerNode.votedFor = in.CandidateId
-			return &pb.VoteResult{VoteGranted: true, Term: in.Term}, nil
+			s.Server.votedFor = in.CandidateId
+			result.VoteGranted = true
+			return &result, nil
 		}
 
 		checkTerm := followerLog.logEntries[followerLog.lastIndex].term <= in.LastLogTerm
 		checkIdx := followerLog.lastIndex <= in.LastLogIndex[0]
 
 		if checkTerm && checkIdx {
-			followerNode.votedFor = in.CandidateId
-			return &pb.VoteResult{VoteGranted: true, Term: in.Term}, nil
+			s.Server.votedFor = in.CandidateId
+			result.VoteGranted = true
+			return &result, nil
 		}
 	}
 
-	return &pb.VoteResult{VoteGranted: false}, nil
+	result.VoteGranted = false
+	return &result, nil
 }
 
 func (s *RaftServer) AppendEntries(ctx context.Context, in *pb.AppendEntriesArg) (*pb.AppendResult, error) {
