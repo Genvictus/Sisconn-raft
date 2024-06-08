@@ -22,7 +22,7 @@ func TestNewNode(t *testing.T) {
 	}
 
 	if node.currentState.Load() != 0 {
-		t.Errorf("Node current state is incorrect Expected: %d, but got: %d", 0, node.currentState)
+		t.Errorf("Node current state is incorrect Expected: %d, but got: %d", 0, node.currentState.Load())
 	}
 }
 
