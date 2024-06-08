@@ -229,7 +229,6 @@ func (s *RaftServer) RequestVote(ctx context.Context, in *pb.RequestVoteArg) (*p
 
 	if followerNode.votedFor == "" || followerNode.votedFor == in.CandidateId {
 
-		// TODO proper log check
 		followerLog := &followerNode.log
 
 		if followerLog.lastIndex == 0 {
@@ -238,7 +237,7 @@ func (s *RaftServer) RequestVote(ctx context.Context, in *pb.RequestVoteArg) (*p
 		}
 
 		checkTerm := followerLog.logEntries[followerLog.lastIndex].term <= in.LastLogTerm
-		checkIdx := len(followerLog.logEntries)-1 <= int(in.LastLogIndex[0])
+		checkIdx := followerLog.lastIndex <= in.LastLogIndex[0]
 
 		if checkTerm && checkIdx {
 			followerNode.votedFor = in.CandidateId
