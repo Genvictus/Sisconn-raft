@@ -182,10 +182,12 @@ func (r *RaftNode) runTest() {
 
 		case _Candidate:
 			r.requestVotes()
+
 		case _Follower:
 			change := <-r.stateChange
 			switch change {
-			case _StepDown:
+			case _RefreshFollower:
+				// received new AppendEntries, leader still alive,
 				// do nothing
 			}
 		}
@@ -388,7 +390,7 @@ func (r *RaftNode) requestVotes() {
 
 			if voteCount >= totalNodes {
 				log.Println("Election won by ", r.address)
-				r.currentState.Store(_Leader)
+				r.initiateLeader()
 				return
 			}
 		case address := <-retryCh:
