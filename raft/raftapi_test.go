@@ -4,6 +4,7 @@ import (
 	pb "Sisconn-raft/raft/raftpc"
 	"Sisconn-raft/raft/transport"
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -101,9 +102,12 @@ func TestCommit(t *testing.T) {
 			{Type: "set", Key: "CommitKey2", Value: "CommitValue2"},
 			{Type: "set", Key: "CommitKey3", Value: "CommitValue3"},
 			{Type: "set", Key: "CommitKey4", Value: "CommitValue4"},
+			{Type: "del", Key: "CommitKey5", Value: ""},
 			{Type: "del", Key: "CommitKey2", Value: ""},
 			{Type: "append", Key: "CommitKey3", Value: " AppendValue3"},
 			{Type: "set", Key: "CommitKey4", Value: "ResetValue4"},
+			{Type: "append", Key: "CommitKey5", Value: " AppendValue5"},
+			{Type: "append", Key: "CommitKey5", Value: " AppendValue5"},
 		},
 	}
 
@@ -112,7 +116,7 @@ func TestCommit(t *testing.T) {
 	if err != nil {
 		t.Errorf("Commit failed: %v", err)
 	}
-	expected := "OK (7 commands execution)"
+	expected := fmt.Sprintf("OK (%d commands execution)", len(request.CommitEntries))
 	if response.Response != expected {
 		t.Errorf("Expected response: %s, but got: %s", expected, response.Response)
 	}
@@ -123,6 +127,7 @@ func TestCommit(t *testing.T) {
 		{Key: "CommitKey2", Value: ""},
 		{Key: "CommitKey3", Value: "CommitValue3 AppendValue3"},
 		{Key: "CommitKey4", Value: "ResetValue4"},
+		{Key: "CommitKey5", Value: " AppendValue5 AppendValue5"},
 	}
 
 	for _, tt := range tests {
@@ -232,6 +237,31 @@ func TestAppend(t *testing.T) {
 		t.Fatalf("Get failed: %v", err)
 	}
 	expectedValue := initialValue + appendValue
+	if getResponse.Value != expectedValue {
+		t.Errorf("Expected value: %s, but got: %s", expectedValue, getResponse.Value)
+	}
+
+	// Append nil value
+	delRequest := &pb.KeyedRequest{Key: key}
+	_, err = client.Del(ctx, delRequest)
+	if err != nil {
+		t.Fatalf("Del failed: %v", err)
+	}
+
+	appendResponse, err = client.Append(ctx, appendRequest)
+	if err != nil {
+		t.Fatalf("Append failed: %v", err)
+	}
+	if appendResponse.Response != expectedResponse {
+		t.Errorf("Expected response: %s, but got: %s", expectedResponse, appendResponse.Response)
+	}
+
+	getRequest = &pb.KeyedRequest{Key: key}
+	getResponse, err = client.Get(ctx, getRequest)
+	if err != nil {
+		t.Fatalf("Get failed: %v", err)
+	}
+	expectedValue = appendValue
 	if getResponse.Value != expectedValue {
 		t.Errorf("Expected value: %s, but got: %s", expectedValue, getResponse.Value)
 	}
