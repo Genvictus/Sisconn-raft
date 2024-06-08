@@ -332,32 +332,54 @@ func (r *RaftNode) requestVotes() {
 	// count votes
 	voteCount := 1
 	voteCh := make(chan bool, r.countNodes(false)-1)
+	retryCh := make(chan string, r.countNodes(false)-1)
 	// send vote request to all nodes
 	for address := range r.raftClient {
 		if address != r.address {
 			go func(addr string) {
-				voteCh <- r.singleRequestVote(addr, lastIndex, lastTerm)
+				voteCh <- r.singleRequestVote(addr, lastIndex, lastTerm, retryCh)
 			}(address)
 		}
 	}
 
-	totalNodes := r.countNodes(true)
-	for voteGranted := range voteCh {
-		if voteGranted {
-			voteCount++
-		}
+	electionDuration := time.NewTimer(RandMs(ELECTION_TIMEOUT_MIN, ELECTION_TIMEOUT_MAX))
 
-		if voteCount >= totalNodes {
+	totalNodes := r.countNodes(true)
+	for {
+		select {
+		case voteGranted := <-voteCh:
+			if voteGranted {
+				voteCount++
+			}
+
+			if voteCount >= totalNodes {
+				log.Println("Election won by ", r.address)
+				r.raftLock.Lock()
+				r.currentState = _Leader
+				r.raftLock.Unlock()
+				close(voteCh)
+				return
+			}
+		case address := <-retryCh:
+			// retry if addr is active
+			log.Println("Retrying vote request to ", address)
+			go func(addr string) {
+				voteCh <- r.singleRequestVote(addr, lastIndex, lastTerm, retryCh)
+			}(address)
+
+		case <-electionDuration.C:
+			// run the election again
+			log.Println("Election timeout")
 			r.raftLock.Lock()
-			r.currentState = _Leader
+			r.currentState = _Follower
 			r.raftLock.Unlock()
-			close(voteCh)
 			return
 		}
+
 	}
 }
 
-func (r *RaftNode) singleRequestVote(address string, lastLogIndex uint64, lastLogTerm uint64) bool {
+func (r *RaftNode) singleRequestVote(address string, lastLogIndex uint64, lastLogTerm uint64, retryChannel chan<- string) bool {
 	targetClient := r.raftClient[address]
 	// map?
 	lastLogIndexMap := map[uint32]uint64{0: lastLogIndex}
@@ -368,21 +390,27 @@ func (r *RaftNode) singleRequestVote(address string, lastLogIndex uint64, lastLo
 		LastLogTerm:  lastLogTerm,
 	}
 
+	log.Println("Requesting vote from ", address)
+
 	// RPC
 	ctx, cancel := context.WithTimeout(context.Background(), SERVER_RPC_TIMEOUT)
 	result, err := targetClient.RequestVote(ctx, &args)
 	defer cancel()
 
 	if err != nil {
+		log.Println("Error requesting vote from ", address)
 		log.Println(err.Error())
+		retryChannel <- address
 		return false
 	}
 
-	// // if follower term is newer immediately step down?
-	// if result.Term > r.currentTerm {
-	// 	r.stateChange <- _StepDown
-	// 	return false
-	// }
+	log.Println("Vote result ", result)
+	// if follower term is newer immediately step down
+	if result.Term > r.currentTerm {
+		log.Println("Step down")
+		r.stateChange <- _StepDown
+		return false
+	}
 
 	// if vote is granted, return true
 	if result.VoteGranted {
