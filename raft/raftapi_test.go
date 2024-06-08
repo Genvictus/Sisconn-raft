@@ -30,6 +30,9 @@ func TestMain(m *testing.M) {
 
 	raftNode := NewNode(serverAddress.String())
 	raftNode.AddConnections([]string{serverAddress.String()})
+	raftNode.initiateLeader()
+	go raftNode.runTest()
+
 	go startGRPCServer(raftNode, lis)
 
 	conn, err := grpc.NewClient(serverAddress.String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
