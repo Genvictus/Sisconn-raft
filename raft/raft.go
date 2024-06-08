@@ -4,6 +4,7 @@ import (
 	pb "Sisconn-raft/raft/raftpc"
 	"context"
 	"log"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -392,6 +393,7 @@ func (r *RaftNode) requestVotes() {
 		}
 	}
 	// majority not reached, revert to follower
+	log.Println("I lose the election with " + strconv.Itoa(voteCount) + " votes")
 	r.currentState.Store(_Follower)
 }
 

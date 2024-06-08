@@ -14,9 +14,9 @@ var SERVER_RPC_TIMEOUT time.Duration = 500 * time.Millisecond
 var REPLICATION_TIMEOUT time.Duration = 500 * time.Millisecond
 
 var (
-	HEARTBEAT_INTERVAL   time.Duration = 1000 * time.Millisecond
-	ELECTION_TIMEOUT_MIN time.Duration = 2000 * time.Millisecond
-	ELECTION_TIMEOUT_MAX time.Duration = 3000 * time.Millisecond
+	HEARTBEAT_INTERVAL   time.Duration = 3000 * time.Millisecond
+	ELECTION_TIMEOUT_MIN time.Duration = 6000 * time.Millisecond
+	ELECTION_TIMEOUT_MAX time.Duration = 9000 * time.Millisecond
 )
 
 func SetClientTimeout(t time.Duration) {

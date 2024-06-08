@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
@@ -54,8 +55,11 @@ func main() {
 		grpc.UnaryInterceptor(transport.LoggingInterceptorServer(ServerLogger)),
 	)
 
+	hosts := os.Getenv("NODE_ADDRESSES")
+	hostsarr := strings.Split(hosts, ",")
+
 	RaftNode = raft.NewNode(serverAddressStr)
-	RaftNode.AddConnections([]string{serverAddressStr})
+	RaftNode.AddConnections(hostsarr)
 	go RaftNode.Run()
 	pb.RegisterRaftServiceServer(s, &raft.ServiceServer{Server: RaftNode})
 	pb.RegisterRaftServer(s, &raft.RaftServer{Server: RaftNode})
