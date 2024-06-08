@@ -98,7 +98,7 @@ func (k *keyValueReplication) replayLog(startIndex uint64, lastIndex uint64) {
 			k.replicatedState[currentKey] = k.logEntries[i].value
 		}
 	}
-	// update appliy index
+	// update apply index
 	k.lastApplied = lastIndex
 
 	k.stateLock.Unlock()
@@ -114,7 +114,14 @@ func (k *keyValueReplication) appendLog(term uint64, key string, value string) {
 	k.logEntries = append(k.logEntries, keyValueReplicationEntry{term: term, key: key, value: value})
 	k.lastIndex++
 
+	// update temporary replicated state
 	k.tempReplicatedState[key] = value
+	if key == _DELETE_KEY {
+		delete(k.tempReplicatedState, value)
+	} else {
+		// else append the new value
+		k.tempReplicatedState[key] = value
+	}
 
 	k.logLock.Unlock()
 	k.indexLock.Unlock()
@@ -125,18 +132,29 @@ func (k *keyValueReplication) appendTransaction(term uint64, entries []Transacti
 	k.logLock.Lock()
 
 	for _, entry := range entries {
-		newval := k.getLatest(entry.key)
+		key := entry.key
+		value := k.tempReplicatedState[entry.key]
+
 		if entry.command == "append" {
-			newval = newval + entry.value
+			value = value + entry.value
+		} else if entry.command == "delete" {
+			key = _DELETE_KEY
+			value = entry.key
 		} else {
-			newval = entry.value
+			value = entry.value
 		}
 
 		// append and update index
-		k.logEntries = append(k.logEntries, keyValueReplicationEntry{term: term, key: entry.key, value: newval})
+		k.logEntries = append(k.logEntries, keyValueReplicationEntry{term: term, key: key, value: value})
 		k.lastIndex++
 
-		k.tempReplicatedState[entry.key] = newval
+		k.tempReplicatedState[key] = value
+		if key == _DELETE_KEY {
+			delete(k.tempReplicatedState, value)
+		} else {
+			// else append the new value
+			k.tempReplicatedState[key] = value
+		}
 	}
 
 	k.logLock.Unlock()
@@ -176,13 +194,5 @@ func (k *keyValueReplication) get(key string) string {
 	k.stateLock.RLock()
 	val := k.replicatedState[key]
 	k.stateLock.RUnlock()
-	return val
-}
-
-// Only for append function
-func (k *keyValueReplication) getLatest(key string) string {
-	k.logLock.RLock()
-	val := k.tempReplicatedState[key]
-	k.logLock.RUnlock()
 	return val
 }
