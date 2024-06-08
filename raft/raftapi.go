@@ -186,15 +186,12 @@ func (s *ServiceServer) AddNode(ctx context.Context, in *pb.KeyValuedRequest) (*
 		}, nil
 	}
 	log.Println("Adding node " + in.GetKey())
-	success := s.Server.AddConnections([]string{
+	s.Server.AddConnections([]string{
 		in.GetKey(),
 	})
 	// s.Server.membership.appendLog(s.Server.currentTerm, in.GetKey(), _NodeInactive)
 
 	response := "Internal Server Error"
-	if success {
-		response = "OK"
-	}
 	return &pb.MessageResponse{
 		Response:      response,
 		LeaderAddress: "",

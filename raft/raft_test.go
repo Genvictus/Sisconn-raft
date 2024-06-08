@@ -118,12 +118,10 @@ func TestRaftNode_countNodes(t *testing.T) {
 	var nodeCount int
 	var quorum int
 
-	nodeCount, _ = node.countNodes()
+	nodeCount, quorum = node.countNodes()
 	if nodeCount != 5 {
 		t.Errorf("Node count is incorrect Expected: %d, but got: %d", 5, nodeCount)
 	}
-
-	_, quorum = node.countNodes()
 	if quorum != 3 {
 		t.Errorf("Quorum count is incorrect Expected: %d, but got: %d", 3, quorum)
 	}
@@ -134,12 +132,10 @@ func TestRaftNode_countNodes(t *testing.T) {
 		serverAddress8.String(),
 	})
 
-	nodeCount, _ = node.countNodes()
+	nodeCount, quorum = node.countNodes()
 	if nodeCount != 8 {
 		t.Errorf("Node count is incorrect Expected: %d, but got: %d", 8, nodeCount)
 	}
-
-	_, quorum = node.countNodes()
 	if quorum != 5 {
 		t.Errorf("Quorum count is incorrect Expected: %d, but got: %d", 5, quorum)
 	}
@@ -150,12 +146,10 @@ func TestRaftNode_countNodes(t *testing.T) {
 		serverAddress6.String(),
 	})
 
-	nodeCount, _ = node.countNodes()
+	nodeCount, quorum = node.countNodes()
 	if nodeCount != 5 {
 		t.Errorf("Node count is incorrect Expected: %d, but got: %d", 5, nodeCount)
 	}
-
-	_, quorum = node.countNodes()
 	if quorum != 3 {
 		t.Errorf("Quorum count is incorrect Expected: %d, but got: %d", 3, quorum)
 	}
@@ -257,12 +251,9 @@ func TestRaftNode_singleRequestVote(t *testing.T) {
 	lastIndex := node.log.lastIndex
 	lastTerm := node.log.getEntries(lastIndex, lastIndex)[0].term
 
-	total, _ := node.countNodes()
-	retyCh := make(chan string, total-1)
-
 	// vote granted
 	node.currentTerm = 2
-	result := node.singleRequestVote(node2.address, lastIndex, lastTerm, retyCh)
+	result := node.singleRequestVote(node2.address, lastIndex, lastTerm)
 
 	if result != true {
 		t.Errorf("Vote request failed")
@@ -271,7 +262,7 @@ func TestRaftNode_singleRequestVote(t *testing.T) {
 
 	// step down
 	node3.currentTerm = 69
-	result = node.singleRequestVote(node3.address, lastIndex, lastTerm, retyCh)
+	result = node.singleRequestVote(node3.address, lastIndex, lastTerm)
 
 	if result != false {
 		t.Errorf("Vote request failed")
@@ -284,15 +275,10 @@ func TestRaftNode_singleRequestVote(t *testing.T) {
 	// }
 
 	// error vote
-	result = node.singleRequestVote(serverAddress4.String(), lastIndex, lastTerm, retyCh)
+	result = node.singleRequestVote(serverAddress4.String(), lastIndex, lastTerm)
 
 	if result != false {
 		t.Errorf("Vote request failed")
-	}
-	// check if address in retry channel
-	address := <-retyCh
-	if address != serverAddress4.String() {
-		t.Errorf("Expected address in retry channel to be %s, but got: %s", serverAddress4.String(), address)
 	}
 }
 
