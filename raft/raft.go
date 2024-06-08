@@ -105,7 +105,7 @@ func (r *RaftNode) AddConnections(targets []string) {
 func (r *RaftNode) RemoveConnections(targets []string) {
 	r.connLock.Lock()
 	defer r.connLock.Unlock()
-	
+
 	for _, address := range targets {
 		// delete the grpc client
 		delete(r.raftClient, address)
@@ -114,6 +114,7 @@ func (r *RaftNode) RemoveConnections(targets []string) {
 		delete(r.conn, address)
 		r.membership.appendLog(r.currentTerm, _DELETE_KEY, address)
 	}
+	r.membership.commitEntries(r.membership.lastIndex)
 }
 
 func (r *RaftNode) Run() {
