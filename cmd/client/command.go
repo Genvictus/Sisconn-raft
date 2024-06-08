@@ -105,6 +105,10 @@ func executeCommand(input string) {
 		Commit()
 	case "cancel":
 		Cancel()
+	case "add-node":
+		AddNode(commandArgs)
+	case "remove-node":
+		RemoveNode(commandArgs)
 	default:
 	}
 
@@ -168,6 +172,14 @@ func validateCommand(command string, args []string) error {
 	case "cancel":
 		if !IsTransactionStart {
 			return errors.New("transaction is not started yet")
+		}
+	case "add-node":
+		if len(args) != 2 {
+			return errors.New("usage: add-node <host> <port>")
+		}
+	case "remove-node":
+		if len(args) != 2 {
+			return errors.New("usage: remove-node <host> <port>")
 		}
 	default:
 		return errors.New("unknown command: " + command)
@@ -467,6 +479,90 @@ func Commit() string {
 	TransactionList = nil
 	IsTransactionStart = false
 
+	return r.GetResponse()
+}
+
+func AddNode(args []string) string {
+	host := args[0]
+	_, err := strconv.Atoi(args[1])
+	if err != nil {
+		fmt.Println("Error: invalid server port, port must be an integer")
+		return ""
+	}
+	fmt.Println("Adding new node")
+
+	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
+	defer cancel()
+
+	r, err := serviceClient.AddNode(ctx, &pb.KeyValuedRequest{
+		Key:   host + ":" + args[1],
+		Value: "",
+	})
+
+	if err != nil {
+		ClientLogger.Println(err)
+		return err.Error()
+	}
+
+	fmt.Println(r.GetResponse())
+	if r.LeaderAddress != "" {
+		err = changeToLeaderAddress(r.LeaderAddress)
+		if err != nil {
+			ClientLogger.Println(err)
+			return err.Error()
+		}
+
+		r, err = serviceClient.AddNode(ctx, &pb.KeyValuedRequest{
+			Key:   host + ":" + args[1],
+			Value: "",
+		})
+
+		if err != nil {
+			ClientLogger.Println(err)
+			return err.Error()
+		}
+		fmt.Println(r.GetResponse())
+	}
+	return r.GetResponse()
+}
+
+func RemoveNode(args []string) string {
+	fmt.Println("Removing node")
+	host := args[0]
+	_, err := strconv.Atoi(args[1])
+	if err != nil {
+		fmt.Println("Error: invalid server port, port must be an integer")
+		return ""
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
+	defer cancel()
+
+	r, err := serviceClient.RemoveNode(ctx, &pb.KeyedRequest{
+		Key: host + ":" + args[1],
+	})
+	if err != nil {
+		ClientLogger.Println(err)
+		return err.Error()
+	}
+	fmt.Println(r.GetResponse())
+
+	if r.LeaderAddress != "" {
+		err = changeToLeaderAddress(r.LeaderAddress)
+		if err != nil {
+			ClientLogger.Println(err)
+			return err.Error()
+		}
+
+		r, err := serviceClient.RemoveNode(ctx, &pb.KeyedRequest{
+			Key: host + ":" + args[1],
+		})
+		if err != nil {
+			ClientLogger.Println(err)
+			return err.Error()
+		}
+		fmt.Println(r.GetResponse())
+	}
 	return r.GetResponse()
 }
 
