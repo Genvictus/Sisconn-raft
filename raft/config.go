@@ -99,6 +99,12 @@ const (
 )
 
 const (
+	OkResponse        = "OK"
+	PendingResponse   = "PENDING"
+	NotLeaderResponse = "PLEASE CONTACT LEADER ADDRESS "
+)
+
+const (
 	_NodeActive   = "active"
 	_NodeInactive = "inactive"
 )

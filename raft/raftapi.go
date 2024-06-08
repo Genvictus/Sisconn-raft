@@ -17,19 +17,45 @@ type ServiceServer struct {
 }
 
 func (s *ServiceServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.MessageResponse, error) {
+	log.Println(s.Server.address)
+	log.Println(s.Server.leaderAddress)
+	if s.Server.currentState != _Leader {
+		return &pb.MessageResponse{
+			Response:      NotLeaderResponse + s.Server.leaderAddress,
+			LeaderAddress: s.Server.leaderAddress,
+		}, nil
+	}
 	// maybe add a dedicated logger
 	// TODO: get sender's IP to be outputted to log
 	log.Println("ping received")
-	return &pb.MessageResponse{Response: "OK"}, nil
+	return &pb.MessageResponse{
+		Response:      OkResponse,
+		LeaderAddress: "",
+	}, nil
 }
 
 func (s *ServiceServer) Get(ctx context.Context, in *pb.KeyedRequest) (*pb.ValueResponse, error) {
+	if s.Server.currentState != _Leader {
+		return &pb.ValueResponse{
+			Value:         NotLeaderResponse + s.Server.leaderAddress,
+			LeaderAddress: s.Server.leaderAddress,
+		}, nil
+	}
 	log.Println("get key:", in.Key)
 	log.Println(s.Server.log.replicatedState)
-	return &pb.ValueResponse{Value: s.Server.log.get(in.Key)}, nil
+	return &pb.ValueResponse{
+		Value:         s.Server.log.get(in.Key),
+		LeaderAddress: "",
+	}, nil
 }
 
 func (s *ServiceServer) Set(ctx context.Context, in *pb.KeyValuedRequest) (*pb.MessageResponse, error) {
+	if s.Server.currentState != _Leader {
+		return &pb.MessageResponse{
+			Response:      NotLeaderResponse + s.Server.leaderAddress,
+			LeaderAddress: s.Server.leaderAddress,
+		}, nil
+	}
 	log.Println("set key:", in.Key, "with value:", in.Value)
 	s.Server.log.appendLog(s.Server.currentTerm, in.Key, in.Value)
 	// Replicate Entries to commit
@@ -37,19 +63,37 @@ func (s *ServiceServer) Set(ctx context.Context, in *pb.KeyValuedRequest) (*pb.M
 	defer cancel()
 	var response string
 	if s.Server.replicateEntry(commitCtx) {
-		response = "OK"
+		response = OkResponse
 	} else {
-		response = "Pending"
+		response = PendingResponse
 	}
-	return &pb.MessageResponse{Response: response}, nil
+	return &pb.MessageResponse{
+		Response:      response,
+		LeaderAddress: "",
+	}, nil
 }
 
 func (s *ServiceServer) Strln(ctx context.Context, in *pb.KeyedRequest) (*pb.ValueResponse, error) {
+	if s.Server.currentState != _Leader {
+		return &pb.ValueResponse{
+			Value:         NotLeaderResponse + s.Server.leaderAddress,
+			LeaderAddress: s.Server.leaderAddress,
+		}, nil
+	}
 	log.Println("get strln for key:", in.Key)
-	return &pb.ValueResponse{Value: strconv.Itoa(len(s.Server.log.get(in.Key)))}, nil
+	return &pb.ValueResponse{
+		Value:         strconv.Itoa(len(s.Server.log.get(in.Key))),
+		LeaderAddress: "",
+	}, nil
 }
 
 func (s *ServiceServer) Del(ctx context.Context, in *pb.KeyedRequest) (*pb.ValueResponse, error) {
+	if s.Server.currentState != _Leader {
+		return &pb.ValueResponse{
+			Value:         NotLeaderResponse + s.Server.leaderAddress,
+			LeaderAddress: s.Server.leaderAddress,
+		}, nil
+	}
 	log.Println("del key:", in.Key)
 	val := s.Server.log.get(in.Key)
 	s.Server.log.appendLog(s.Server.currentTerm, _DELETE_KEY, in.Key)
@@ -57,10 +101,19 @@ func (s *ServiceServer) Del(ctx context.Context, in *pb.KeyedRequest) (*pb.Value
 	commitCtx, cancel := context.WithTimeout(context.Background(), REPLICATION_TIMEOUT)
 	defer cancel()
 	s.Server.replicateEntry(commitCtx)
-	return &pb.ValueResponse{Value: val}, nil
+	return &pb.ValueResponse{
+		Value:         val,
+		LeaderAddress: "",
+	}, nil
 }
 
 func (s *ServiceServer) Append(ctx context.Context, in *pb.KeyValuedRequest) (*pb.MessageResponse, error) {
+	if s.Server.currentState != _Leader {
+		return &pb.MessageResponse{
+			Response:      NotLeaderResponse + s.Server.leaderAddress,
+			LeaderAddress: s.Server.leaderAddress,
+		}, nil
+	}
 	log.Println("append key:", in.Key, "with", in.Value)
 	s.Server.log.appendLog(s.Server.currentTerm, in.Key, s.Server.log.get(in.Key)+in.Value)
 	// Replicate Entries to commit
@@ -68,23 +121,41 @@ func (s *ServiceServer) Append(ctx context.Context, in *pb.KeyValuedRequest) (*p
 	defer cancel()
 	var response string
 	if s.Server.replicateEntry(commitCtx) {
-		response = "OK"
+		response = OkResponse
 	} else {
-		response = "Pending"
+		response = PendingResponse
 	}
-	return &pb.MessageResponse{Response: response}, nil
+	return &pb.MessageResponse{
+		Response:      response,
+		LeaderAddress: "",
+	}, nil
 }
 
 func (s *ServiceServer) ReqLog(ctx context.Context, in *pb.LogRequest) (*pb.LogResponse, error) {
+	if s.Server.currentState != _Leader {
+		return &pb.LogResponse{
+			LogEntries:    nil,
+			LeaderAddress: s.Server.leaderAddress,
+		}, nil
+	}
 	log.Println("request log")
 	var logEntries []*pb.LogEntry
 	for _, log := range s.Server.log.logEntries {
 		logEntries = append(logEntries, &pb.LogEntry{Term: log.term, Key: log.key, Value: log.value})
 	}
-	return &pb.LogResponse{LogEntries: logEntries}, nil
+	return &pb.LogResponse{
+		LogEntries:    logEntries,
+		LeaderAddress: "",
+	}, nil
 }
 
 func (s *ServiceServer) Commit(ctx context.Context, in *pb.CommitRequest) (*pb.MessageResponse, error) {
+	if s.Server.currentState != _Leader {
+		return &pb.MessageResponse{
+			Response:      NotLeaderResponse + s.Server.leaderAddress,
+			LeaderAddress: s.Server.leaderAddress,
+		}, nil
+	}
 	log.Println("commit")
 	var entries []TransactionEntry
 	for _, entry := range in.CommitEntries {
@@ -97,21 +168,42 @@ func (s *ServiceServer) Commit(ctx context.Context, in *pb.CommitRequest) (*pb.M
 	defer cancel()
 	var response string
 	if s.Server.replicateEntry(commitCtx) {
-		response = "OK"
+		response = OkResponse
 	} else {
-		response = "Pending"
+		response = PendingResponse
 	}
-	return &pb.MessageResponse{Response: response + " (" + strconv.Itoa(len(entries)) + " commands execution)"}, nil
+	return &pb.MessageResponse{
+		Response:      response + " (" + strconv.Itoa(len(entries)) + " commands execution)",
+		LeaderAddress: "",
+	}, nil
 }
 
 func (s *ServiceServer) AddNode(ctx context.Context, in *pb.KeyValuedRequest) (*pb.MessageResponse, error) {
+	if s.Server.address != s.Server.leaderAddress {
+		return &pb.MessageResponse{
+			Response:      NotLeaderResponse + s.Server.leaderAddress,
+			LeaderAddress: s.Server.leaderAddress,
+		}, nil
+	}
 	log.Println("add node")
-	return &pb.MessageResponse{Response: "Not Implemented"}, nil
+	return &pb.MessageResponse{
+		Response:      "Not Implemented",
+		LeaderAddress: "",
+	}, nil
 }
 
 func (s *ServiceServer) RemoveNode(ctx context.Context, in *pb.KeyedRequest) (*pb.MessageResponse, error) {
+	if s.Server.currentState != _Leader {
+		return &pb.MessageResponse{
+			Response:      NotLeaderResponse + s.Server.leaderAddress,
+			LeaderAddress: s.Server.leaderAddress,
+		}, nil
+	}
 	log.Println("add node")
-	return &pb.MessageResponse{Response: "Not Implemented"}, nil
+	return &pb.MessageResponse{
+		Response:      "Not Implemented",
+		LeaderAddress: "",
+	}, nil
 }
 
 /*

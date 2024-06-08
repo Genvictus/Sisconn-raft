@@ -5,6 +5,7 @@ import (
 	t "Sisconn-raft/raft/transport"
 	"bytes"
 	"log"
+	"net"
 	"net/http"
 
 	r "Sisconn-raft/raft"
@@ -42,6 +43,22 @@ func setTargetServer(server *t.Address) {
 	}
 
 	serviceClient = pb.NewRaftServiceClient(conn)
+}
+
+func changeToLeaderAddress(leaderAddress string) error {
+	host, port, err := net.SplitHostPort(leaderAddress)
+	if err != nil {
+		return err
+	}
+	portInt, err := strconv.Atoi(port)
+	if err != nil {
+		return err
+	}
+
+	newServer := t.NewAddress(host, portInt)
+	setTargetServer(&newServer)
+
+	return nil
 }
 
 func executeCommand(input string) {
@@ -187,6 +204,19 @@ func ping() string {
 	}
 
 	fmt.Println(r.GetResponse())
+	if r.LeaderAddress != "" {
+		err = changeToLeaderAddress(r.LeaderAddress)
+		if err != nil {
+			ClientLogger.Println(err)
+			return err.Error()
+		}
+
+		r, err = serviceClient.Ping(ctx, &pb.PingRequest{})
+		if err != nil {
+			ClientLogger.Println(err)
+			return err.Error()
+		}
+	}
 	return r.GetResponse()
 }
 
@@ -204,6 +234,20 @@ func get(args []string) string {
 	}
 
 	fmt.Println(r.GetValue())
+	if r.LeaderAddress != "" {
+		err = changeToLeaderAddress(r.LeaderAddress)
+		if err != nil {
+			ClientLogger.Println(err)
+			return err.Error()
+		}
+
+		r, err = serviceClient.Get(ctx, &pb.KeyedRequest{Key: args[0]})
+		if err != nil {
+			ClientLogger.Println(err)
+			return err.Error()
+		}
+		fmt.Println(r.GetValue())
+	}
 	return r.GetValue()
 }
 
@@ -231,6 +275,21 @@ func set(args []string) string {
 	}
 
 	fmt.Println(r.GetResponse())
+	if r.LeaderAddress != "" {
+		err = changeToLeaderAddress(r.LeaderAddress)
+		if err != nil {
+			ClientLogger.Println(err)
+			return err.Error()
+		}
+
+		r, err = serviceClient.Set(ctx, &pb.KeyValuedRequest{Key: args[0], Value: args[1]})
+		if err != nil {
+			ClientLogger.Println(err)
+			return err.Error()
+		}
+		fmt.Println(r.GetResponse())
+	}
+
 	return r.GetResponse()
 }
 
@@ -248,6 +307,21 @@ func strln(args []string) string {
 	}
 
 	fmt.Println(r.GetValue())
+	if r.LeaderAddress != "" {
+		err = changeToLeaderAddress(r.LeaderAddress)
+		if err != nil {
+			ClientLogger.Println(err)
+			return err.Error()
+		}
+
+		r, err = serviceClient.Strln(ctx, &pb.KeyedRequest{Key: args[0]})
+		if err != nil {
+			ClientLogger.Println(err)
+			return err.Error()
+		}
+		fmt.Println(r.GetValue())
+	}
+
 	return r.GetValue()
 }
 
@@ -276,6 +350,21 @@ func del(args []string) string {
 	}
 
 	fmt.Println(r.GetValue())
+	if r.LeaderAddress != "" {
+		err = changeToLeaderAddress(r.LeaderAddress)
+		if err != nil {
+			ClientLogger.Println(err)
+			return err.Error()
+		}
+
+		r, err = serviceClient.Del(ctx, &pb.KeyedRequest{Key: args[0]})
+		if err != nil {
+			ClientLogger.Println(err)
+			return err.Error()
+		}
+		fmt.Println(r.GetValue())
+	}
+
 	return r.GetValue()
 }
 
@@ -304,6 +393,20 @@ func Append(args []string) string {
 	}
 
 	fmt.Println(r.GetResponse())
+	if r.LeaderAddress != "" {
+		err = changeToLeaderAddress(r.LeaderAddress)
+		if err != nil {
+			ClientLogger.Println(err)
+			return err.Error()
+		}
+
+		r, err = serviceClient.Append(ctx, &pb.KeyValuedRequest{Key: args[0], Value: args[1]})
+		if err != nil {
+			ClientLogger.Println(err)
+			return err.Error()
+		}
+		fmt.Println(r.GetResponse())
+	}
 	return r.GetResponse()
 }
 
@@ -343,10 +446,27 @@ func Commit() string {
 	// log.Println("buat ctx ga error", ctx)
 
 	// log.Println("batch exe: ", TransactionList)
+	log.Println(r.GetResponse())
+	if r.LeaderAddress != "" {
+		err = changeToLeaderAddress(r.LeaderAddress)
+		if err != nil {
+			ClientLogger.Println(err)
+			return err.Error()
+		}
+
+		r, err = serviceClient.Commit(ctx, &pb.CommitRequest{
+			CommitEntries: commitEntries,
+		})
+		if err != nil {
+			ClientLogger.Println(err)
+			return err.Error()
+		}
+		fmt.Println(r.GetResponse())
+	}
+
 	TransactionList = nil
 	IsTransactionStart = false
 
-	log.Println(r.GetResponse())
 	return r.GetResponse()
 }
 
