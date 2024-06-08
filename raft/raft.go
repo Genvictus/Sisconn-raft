@@ -74,6 +74,8 @@ func NewNode(address string) *RaftNode {
 
 func (r *RaftNode) AddConnections(targets []string) {
 	r.connLock.Lock()
+	defer r.connLock.Unlock()
+
 	for _, address := range targets {
 		// create connection
 		if address != r.address {
@@ -98,7 +100,6 @@ func (r *RaftNode) AddConnections(targets []string) {
 		r.membership.appendLog(r.currentTerm, address, _NodeActive)
 	}
 	r.membership.commitEntries(r.membership.lastIndex)
-	r.connLock.Unlock()
 }
 
 func (r *RaftNode) RemoveConnections(targets []string) {
