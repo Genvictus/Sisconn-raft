@@ -174,9 +174,65 @@ func TestRaftNode_singleAppendEntries(t *testing.T) {
 }
 
 func TestRaftNode_requestVotes(t *testing.T) {
-	// TODO: Add test cases.
-}
+	serverAddress1 := transport.NewAddress("localhost", 2010)
+	serverAddress2 := transport.NewAddress("localhost", 2011)
+	serverAddress3 := transport.NewAddress("localhost", 2012)
+	serverAddress := transport.NewAddress("10.255.255.1", 80)
+	serverAddress4 := transport.NewAddress("localhost", 2006)
+	serverAddress5 := transport.NewAddress("localhost", 2007)
+	serverAddress6 := transport.NewAddress("localhost", 2008)
 
+	node := NewNode(serverAddress1.String())
+	ListenServer(node, grpc.NewServer())
+	node2 := NewNode(serverAddress2.String())
+	ListenServer(node2, grpc.NewServer())
+	node3 := NewNode(serverAddress3.String())
+	ListenServer(node3, grpc.NewServer())
+	node4 := NewNode(serverAddress4.String())
+	ListenServer(node4, grpc.NewServer())
+	node5 := NewNode(serverAddress5.String())
+	ListenServer(node5, grpc.NewServer())
+	node6 := NewNode(serverAddress6.String())
+	ListenServer(node6, grpc.NewServer())
+
+	node.AddConnections([]string{
+		serverAddress1.String(),
+		serverAddress2.String(),
+		serverAddress3.String(),
+		serverAddress4.String(),
+		serverAddress.String(),
+		serverAddress5.String(),
+		serverAddress6.String(),
+	})
+
+	// Test vote request
+
+	// Timeout to Follower
+	t.Log("Testing Timeout to Follower")
+	node.currentState.Store(_Candidate)
+	node2.currentTerm = 69
+	node3.currentTerm = 69
+	node4.currentTerm = 69
+	node5.currentTerm = 69
+	node.requestVotes()
+
+	state := node.currentState.Load()
+	if state != _Follower {
+		t.Errorf("Expected state to be _Follower, but got: %d", state)
+	}
+
+	// Leader
+	t.Log("Testing Leader")
+	node.currentState.Store(_Candidate)
+	node.currentTerm = 70
+	node.requestVotes()
+
+	state = node.currentState.Load()
+	if state != _Leader {
+		t.Errorf("Expected state to be _Leader, but got: %d", state)
+	}
+
+}
 func TestRaftNode_singleRequestVote(t *testing.T) {
 	serverAddress1 := transport.NewAddress("localhost", 2000)
 	serverAddress2 := transport.NewAddress("localhost", 2004)
