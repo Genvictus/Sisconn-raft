@@ -208,14 +208,16 @@ func (r *RaftNode) countNodes(isQuorum bool) int {
 }
 
 func (r *RaftNode) replicateEntry(ctx context.Context) bool {
-	committedCh := make(chan bool)
-	// TODO signal raft main thread
 	// r.stateChange <- _NewAppendEntry
-	go r.appendEntries(false, committedCh)
+	wait := func() chan bool {
+		committedCh := make(chan bool)
+		go r.appendEntries(false, committedCh)
+		return committedCh
+	}
 
 	// wait until committed
 	select {
-	case committed := <-committedCh:
+	case committed := <-wait():
 		return committed
 	case <-ctx.Done():
 		return false
