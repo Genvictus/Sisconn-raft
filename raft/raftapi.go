@@ -265,11 +265,18 @@ func (s *RaftServer) AppendEntries(ctx context.Context, in *pb.AppendEntriesArg)
 	if s.Server.currentState.Load() == _Follower {
 		// request is valid, refresh follower
 		s.Server.stateChange <- _RefreshFollower
+		s.Server.raftLock.Lock()
+		s.Server.leaderAddress = in.GetLeaderId()
+		s.Server.raftLock.Unlock()
 	}
 
 	// 2. Reply false if log doesn’t contain an entry at prevLogIndex
 	// whose term matches prevLogTerm (§5.3)
-	if s.Server.log.lastIndex < in.PrevLogIndex {
+	s.Server.log.indexLock.RLock()
+	lastIndex := s.Server.log.lastIndex
+	commitIndex := s.Server.log.commitIndex
+	s.Server.log.indexLock.RUnlock()
+	if lastIndex < in.PrevLogIndex {
 		// if index is out of bound (newer entries)
 		res.Success = false
 		return &res, nil
@@ -297,10 +304,6 @@ func (s *RaftServer) AppendEntries(ctx context.Context, in *pb.AppendEntriesArg)
 
 	// 5. If leaderCommit > commitIndex, set commitIndex =
 	// min(leaderCommit, index of last new entry)
-	s.Server.log.indexLock.RLock()
-	commitIndex := s.Server.log.commitIndex
-	lastIndex := s.Server.log.lastIndex
-	s.Server.log.indexLock.RUnlock()
 	if in.LeaderCommit > commitIndex {
 		// should be long running, especially if this deals with persistence
 		// i.e. writing to stable storage
