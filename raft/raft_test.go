@@ -112,6 +112,39 @@ func TestRaftNode_Run(t *testing.T) {
 	// TODO: Add test cases.
 }
 
+func TestRaftNode_RunTest(t *testing.T) {
+	serverAddress := transport.NewAddress("localhost", 2021)
+	node := NewNode(serverAddress.String())
+	ListenServer(node, grpc.NewServer())
+
+	node.AddConnections([]string{
+		serverAddress.String(),
+	})
+
+	go node.runTest()
+
+	// Test stepdown leader
+	node.currentState.Store(_Leader)
+	node.stateChange <- _StepDown
+
+	state := node.currentState.Load()
+	if state != _Follower {
+		t.Errorf("Expected leader state to be _Follower, but got: %d", state)
+	}
+
+	// Test stepdown candidate
+	// refresh follower
+	node.currentState.Store(_Candidate)
+	node.stateChange <- _RefreshFollower
+
+	node.stateChange <- _StepDown
+
+	state = node.currentState.Load()
+	if state != _Follower {
+		t.Errorf("Expected candidate state to be _Follower, but got: %d", state)
+	}
+}
+
 func TestRaftNode_countNodes(t *testing.T) {
 	serverAddress1 := transport.NewAddress("localhost", 2001)
 	serverAddress2 := transport.NewAddress("localhost", 2002)
@@ -190,13 +223,21 @@ func TestRaftNode_replicateEntry(t *testing.T) {
 	go node.runTest()
 	go node2.runTest()
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
 
 	// Replicate Entry
 	val := node.replicateEntry(ctx)
 
 	if val != true {
 		t.Errorf("Expected success, but got: %t", val)
+	}
+
+	// Testing ctx timeout
+	cancel()
+	val = node.replicateEntry(ctx)
+
+	if val != false {
+		t.Errorf("Expected failed, but got: %t", val)
 	}
 }
 
@@ -333,7 +374,24 @@ func TestRaftNode_requestVotes(t *testing.T) {
 		t.Errorf("Expected state to be _Leader, but got: %d", state)
 	}
 
+	// Test single node case
+	serverAddress7 := transport.NewAddress("localhost", 2017)
+	node7 := NewNode(serverAddress1.String())
+	node7.AddConnections([]string{
+		serverAddress7.String(),
+	})
+	go node7.runTest()
+
+	node7.currentState.Store(_Candidate)
+	
+	node7.requestVotes()
+
+	state = node7.currentState.Load()
+	if state != _Leader {
+		t.Errorf("Expected state to be _Leader, but got: %d", state)
+	}
 }
+
 func TestRaftNode_singleRequestVote(t *testing.T) {
 	serverAddress1 := transport.NewAddress("localhost", 2000)
 	serverAddress2 := transport.NewAddress("localhost", 2004)
@@ -394,12 +452,35 @@ func TestRaftNode_singleRequestVote(t *testing.T) {
 	}
 }
 
-func TestRaftNode_getFollowerIndex(t *testing.T) {
-	// TODO: Add test cases.
-}
+func TestRaftNode_initiateLeader(t *testing.T) {
+	serverAddress1 := transport.NewAddress("localhost", 2014)
+	serverAddress2 := transport.NewAddress("localhost", 2015)
+	serverAddress3 := transport.NewAddress("localhost", 2016)
 
-func TestRaftNode_createLogEntryArgs(t *testing.T) {
-	// TODO: Add test cases.
+	node1 := NewNode(serverAddress1.String())
+	ListenServer(node1, grpc.NewServer())
+	node2 := NewNode(serverAddress2.String())
+	ListenServer(node2, grpc.NewServer())
+	node3 := NewNode(serverAddress3.String())
+	ListenServer(node3, grpc.NewServer())
+
+	node1.AddConnections([]string{
+		serverAddress1.String(),
+		serverAddress2.String(),
+		serverAddress3.String(),
+	})
+
+	// start node
+	go node1.runTest()
+	go node2.runTest()
+	go node3.runTest()
+
+	node1.initiateLeader()
+
+	state := node1.currentState.Load()
+	if state != _Leader {
+		t.Errorf("Expected state to be _Leader, but got: %d", state)
+	}
 }
 
 func TestRaftNode_CompareTerm(t *testing.T) {
@@ -416,6 +497,32 @@ func TestRaftNode_CompareTerm(t *testing.T) {
 
 	if state != _StepDown {
 		t.Errorf("Expected state change to _StepDown, but got: %d", state)
+	}
+}
+
+func TestRaftNode_createLogEntryArgs(t *testing.T) {
+	serverAddress := transport.NewAddress("localhost", 2344)
+
+	node := NewNode(serverAddress.String())
+	
+	node.log.logEntries = []keyValueReplicationEntry{
+		{term: 1, key: "key1", value: "value1"},
+		{term: 1, key: "key2", value: "value2"},
+		{term: 1, key: "key3", value: "value3"},
+		{term: 2, key: "key1", value: " append1"},
+		{term: 2, key: "key2", value: "replace2"},
+		{term: 2, key: "key3", value: ""},
+		{term: 3, key: "key1", value: "newvalue1"},
+		{term: 3, key: "key2", value: " append2"},
+		{term: 3, key: "key3", value: "value3"},
+	}
+
+	args := node.createLogEntryArgs(3, 5)
+
+	for i, entry := range args {
+		if entry.Term != node.log.logEntries[i+3].term {
+			t.Errorf("Expected term to be %d, but got: %d", node.log.logEntries[i+3].term, entry.Term)
+		}
 	}
 }
 

@@ -414,6 +414,13 @@ func (r *RaftNode) requestVotes() {
 			return
 		}
 	}
+
+	// case: 1 node
+	if voteCount >= majority {
+		ServerLogger.Println("Election won by ", r.address)
+		r.initiateLeader()
+		return
+	}
 	// majority not reached, revert to follower
 	ServerLogger.Println("I lose the election with " + strconv.Itoa(voteCount) + " votes")
 	r.currentState.Store(_Follower)
