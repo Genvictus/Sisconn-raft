@@ -1,5 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 import DashboardTable from './components/DashboardTable';
 import LogModal from './components/LogModal';
@@ -17,6 +19,14 @@ function App() {
     Log: ''
   }
 
+  const notifyToast = (message: string, success: boolean) => {
+    if (success) {
+      toast.success(message);
+    } else {
+      toast.error(message);
+    }
+  }
+
   const openLogModal = (index: number) => {
     setSelectedLogNode(index);
     setIsLogModalOpen(true);
@@ -28,12 +38,14 @@ function App() {
 
   const loadNodes = (serverAddress: string) => {
     axios.get<RaftNode[]>(`${serverAddress}/node`)
-    .then((response) => {
-      console.log(response.data);
-      setNodes(response.data);
-    }).catch((error: AxiosError) => {
-      console.error("Error fetching nodes: ", error.message);
-    });
+      .then((response) => {
+        console.log(response.data);
+        setNodes(response.data);
+        notifyToast('Nodes loaded successfully', true);
+      }).catch((error: AxiosError) => {
+        console.error("Error fetching nodes: ", error.message);
+        notifyToast('Error fetching nodes', false);
+      });
   }
 
   const addNode = () => {
@@ -75,6 +87,18 @@ function App() {
           />
         </div>
       </div>
+      
+      <ToastContainer
+        position="bottom-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </div>
   )
 }
