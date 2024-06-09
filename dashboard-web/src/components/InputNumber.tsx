@@ -2,7 +2,7 @@
 type InputNumberProps = {
     name: string;
     value: number;
-    setValue: React.Dispatch<React.SetStateAction<number>>;
+    setValue: (value: number) => void;
 };
 
 export default function InputNumber({

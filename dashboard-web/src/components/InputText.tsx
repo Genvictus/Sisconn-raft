@@ -2,7 +2,7 @@
 type InputTextProps = {
     name: string;
     value: string;
-    setValue: React.Dispatch<React.SetStateAction<string>>;
+    setValue: (value: string) => void;
 };
 
 export default function InputText({
