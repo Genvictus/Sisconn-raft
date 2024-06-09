@@ -346,6 +346,8 @@ func TestRequestVote(t *testing.T) {
 	pb.RegisterRaftServer(grpcServer1, raftServer1)
 	go grpcServer1.Serve(lis1)
 
+	go raftNode1.runTest()
+
 	// Server2 (Candidate)
 	serverAddress2 := transport.NewAddress("localhost", 2002)
 	raftNode2 := NewNode(serverAddress2.String())
@@ -359,6 +361,7 @@ func TestRequestVote(t *testing.T) {
 	grpcServer2 := grpc.NewServer()
 	pb.RegisterRaftServer(grpcServer2, raftServer2)
 	go grpcServer2.Serve(lis2)
+	go raftNode2.runTest()
 
 	// Granted request
 	request := &pb.RequestVoteArg{

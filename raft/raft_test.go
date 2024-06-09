@@ -61,7 +61,7 @@ func TestRaftNode_AddConnections(t *testing.T) {
 
 	out := closeBuf()
 
-    string_out := string(out)
+	string_out := string(out)
 
 	fmt.Println(string_out)
 }
@@ -213,6 +213,11 @@ func TestRaftNode_requestVotes(t *testing.T) {
 
 	// start node
 	go node.runTest()
+	go node2.runTest()
+	go node3.runTest()
+	go node4.runTest()
+	go node5.runTest()
+	go node6.runTest()
 
 	// Timeout to Follower
 	t.Log("Testing Timeout to Follower")
@@ -262,6 +267,8 @@ func TestRaftNode_singleRequestVote(t *testing.T) {
 
 	// start node
 	go node.runTest()
+	go node2.runTest()
+	go node3.runTest()
 
 	// Test vote request
 	lastIndex := node.log.lastIndex
