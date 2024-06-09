@@ -13,8 +13,8 @@
 ## ✨ How to Run
 
 1. Clone this repository
-2. Execute `go mod tidy` on terminal
-3. Run Makefile with `make server` to compile server and `make client` to compile client
+2. Execute `go mod tidy` and then `go mod download` on terminal
+3. Run Makefile with `make server` to compile server and `make client` to compile client or using command `go build`
 4. Run server with `./server` and client with `./client` with corresponding ip and port
 
 Alternatively can run scripts in scripts folder to run server and client.
@@ -36,6 +36,7 @@ Here are some of the functionalities of the client:
 - exit : to exit the client.
 - add-node `<host>` `<port>` : to add a node to the cluster.
 - remove-node `<host>` `<port>` : to remove a node from the cluster.
+- cluster-info : to get the information of the raft cluster.
 
 ---
 
