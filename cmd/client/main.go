@@ -37,7 +37,7 @@ func main() {
 	flag.Parse()
 
 	serverAddress := t.NewAddress(clientInfo.ServerHost, clientInfo.ServerPort)
-	ClientLogger = log.New(os.Stdout, "[Raft] Client "+serverAddress.String()+" : ", 0)
+	setClientLogger(&serverAddress)
 
 	err := godotenv.Load()
 	if err != nil {
