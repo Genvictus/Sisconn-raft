@@ -3,6 +3,7 @@ package raft
 import (
 	pb "Sisconn-raft/raft/raftpc"
 	"context"
+	"fmt"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -94,7 +95,7 @@ func (r *RaftNode) AddConnections(targets []string) {
 
 			// if any fails, stop the process
 			if err != nil {
-				ServerLogger.Printf("Add connection %s fails, error: %v\n", address, err.Error())
+				fmt.Printf("Add connection %s fails, error: %v\n", address, err)
 				return
 			}
 
