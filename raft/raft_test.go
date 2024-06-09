@@ -349,6 +349,14 @@ func TestRaftNode_singleAppendEntries(t *testing.T) {
 		log.Println("Node 2 log ", &node2.log)
 		t.Errorf("Expected log to be equal, but got: %v", &node2.log)
 	}
+
+	// Test not leader
+	node.currentState.Store(_Follower)
+
+	val = node.singleAppendEntries(node2.address, false)
+	if val != false {
+		t.Errorf("Expected failed, but got: %t", val)
+	}
 }
 
 func TestRaftNode_requestVotes(t *testing.T) {
