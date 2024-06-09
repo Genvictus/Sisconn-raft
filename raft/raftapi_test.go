@@ -560,6 +560,73 @@ func TestFollowerRequestRedirect(t *testing.T) {
 	}
 }
 
+func TestServerPendingRequest(t *testing.T) {
+	// Setup server cluster
+	serverAddress := transport.NewAddress("localhost", 8021)
+	lis, err := net.Listen("tcp", serverAddress.String())
+	if err != nil {
+		log.Fatalf("Failed to listen: %v", err)
+	}
+	defer lis.Close()
+
+	raftNode := NewNode(serverAddress.String())
+	raftNode.AddConnections([]string{serverAddress.String(), "localhost:8022"})
+	raftNode.initiateLeader()
+	go raftNode.runTest()
+
+	go startGRPCServer(raftNode, lis)
+
+	conn, err := grpc.NewClient(serverAddress.String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("Failed to connect to server: %v", err)
+	}
+	pendingClient := pb.NewRaftServiceClient(conn)
+
+	// Setup test
+	ctx := context.Background()
+
+	// Set
+	setRequest := &pb.KeyValuedRequest{Key: "key", Value: "value"}
+	setResponse, err := pendingClient.Set(ctx, setRequest)
+	if err != nil {
+		t.Fatalf("Set failed: %v", err)
+	}
+
+	if setResponse.Response != "PENDING" {
+		t.Errorf("Expected response: PENDING, but got: %v", setResponse.Response)
+	}
+
+	// Append
+	appendRequest := &pb.KeyValuedRequest{Key: "key", Value: "value"}
+	appendResponse, err := pendingClient.Append(ctx, appendRequest)
+	if err != nil {
+		t.Fatalf("Append failed: %v", err)
+	}
+
+	if appendResponse.Response != "PENDING" {
+		t.Errorf("Expected response: PENDING, but got: %v", appendResponse.Response)
+	}
+
+	// Commit
+	commitRequest := &pb.CommitRequest{
+		CommitEntries: []*pb.CommitEntry{
+			{Type: "set", Key: "CommitKey1", Value: "CommitValue1"},
+			{Type: "set", Key: "CommitKey2", Value: "CommitValue2"},
+			{Type: "set", Key: "CommitKey3", Value: "CommitValue3"},
+		},
+	}
+
+	commitResponse, err := pendingClient.Commit(ctx, commitRequest)
+	if err != nil {
+		t.Fatalf("Commit failed: %v", err)
+	}
+
+	if commitResponse.Response != "PENDING (3 commands execution)" {
+		t.Errorf("Expected response: PENDING (3 commands execution), but got: %v", commitResponse.Response)
+	}
+
+}
+
 func startGRPCServer(node *RaftNode, lis net.Listener) {
 	grpcServer := grpc.NewServer()
 	pb.RegisterRaftServiceServer(grpcServer, &ServiceServer{Server: node})
