@@ -400,6 +400,23 @@ func TestRaftNode_createLogEntryArgs(t *testing.T) {
 	// TODO: Add test cases.
 }
 
+func TestRaftNode_CompareTerm(t *testing.T) {
+	serverAddress1 := transport.NewAddress("localhost", 2343)
+
+	node1 := NewNode(serverAddress1.String())
+	ListenServer(node1, grpc.NewServer())
+	go node1.runTest()
+	node1.currentTerm = 1
+	node1.currentState.Store(_Leader)
+
+	go node1.compareTerm(2)
+	state := <-node1.stateChange
+
+	if state != _StepDown {
+		t.Errorf("Expected state change to _StepDown, but got: %d", state)
+	}
+}
+
 func ListenServer(node *RaftNode, server *grpc.Server) {
 	serverAddress := node.address
 	lis, err := net.Listen("tcp", serverAddress)
