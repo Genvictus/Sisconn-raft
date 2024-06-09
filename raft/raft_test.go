@@ -112,6 +112,39 @@ func TestRaftNode_Run(t *testing.T) {
 	// TODO: Add test cases.
 }
 
+func TestRaftNode_RunTest(t *testing.T) {
+	serverAddress := transport.NewAddress("localhost", 2021)
+	node := NewNode(serverAddress.String())
+	ListenServer(node, grpc.NewServer())
+
+	node.AddConnections([]string{
+		serverAddress.String(),
+	})
+
+	go node.runTest()
+
+	// Test stepdown leader
+	node.currentState.Store(_Leader)
+	node.stateChange <- _StepDown
+
+	state := node.currentState.Load()
+	if state != _Follower {
+		t.Errorf("Expected leader state to be _Follower, but got: %d", state)
+	}
+
+	// Test stepdown candidate
+	// refresh follower
+	node.currentState.Store(_Candidate)
+	node.stateChange <- _RefreshFollower
+
+	node.stateChange <- _StepDown
+
+	state = node.currentState.Load()
+	if state != _Follower {
+		t.Errorf("Expected candidate state to be _Follower, but got: %d", state)
+	}
+}
+
 func TestRaftNode_countNodes(t *testing.T) {
 	serverAddress1 := transport.NewAddress("localhost", 2001)
 	serverAddress2 := transport.NewAddress("localhost", 2002)
