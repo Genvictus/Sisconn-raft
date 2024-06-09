@@ -95,8 +95,7 @@ func (r *RaftNode) AddConnections(targets []string) {
 
 			// if any fails, stop the process
 			if err != nil {
-				// TODO write log
-				conn.Close()
+				log.Printf("Add connection %s fails, error: %v\n", address, err.Error())
 				return
 			}
 
