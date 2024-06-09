@@ -95,8 +95,7 @@ func (r *RaftNode) AddConnections(targets []string) {
 
 			// if any fails, stop the process
 			if err != nil {
-				// TODO write log
-				conn.Close()
+				log.Printf("Add connection %s fails, error: %v\n", address, err.Error())
 				return
 			}
 
@@ -129,6 +128,7 @@ func (r *RaftNode) RemoveConnections(targets []string) {
 func (r *RaftNode) Run() {
 	for {
 		log.Println("Current state:", r.currentState.Load())
+		log.Println("Current voted for:", r.votedFor)
 		switch r.currentState.Load() {
 		case _Leader:
 			timer := time.NewTimer(HEARTBEAT_INTERVAL)
@@ -485,12 +485,12 @@ func (r *RaftNode) compareTerm(receivedTerm uint64) {
 	if receivedTerm > currentTerm {
 		// handle new term
 		r.currentTerm = receivedTerm
+		r.votedFor = ""
 		switch r.currentState.Load() {
 		case _Leader:
 			// if found a newer term, current leader is stale
 			r.stateChange <- _StepDown
 		case _Candidate:
-			r.votedFor = ""
 			r.stateChange <- _StepDown
 		}
 	}
