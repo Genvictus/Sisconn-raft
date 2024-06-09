@@ -31,8 +31,6 @@ func (s *ServiceServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.Messa
 	p, ok := peer.FromContext(ctx)
 	if ok {
 		ServerLogger.Println("Sender's IP:", p.Addr.String())
-	} else {
-		ServerLogger.Println("Could not extract sender's IP")
 	}
 	return &pb.MessageResponse{
 		Response:      OkResponse,
