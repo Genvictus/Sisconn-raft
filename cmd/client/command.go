@@ -29,6 +29,12 @@ type Transaction struct {
 	Value     string
 }
 
+type NodeResponse struct {
+	Address string
+	State   string
+	Log     string
+}
+
 var TransactionList []Transaction
 
 func setClientLogger(serverAddress *t.Address) {
@@ -98,7 +104,7 @@ func executeCommand(input string) {
 	case "append":
 		Append(commandArgs)
 	case "request-log":
-		requestLog()
+		requestLog(serviceClient)
 	case "change-server":
 		changeServer(commandArgs)
 	case "listen-web":
@@ -115,6 +121,8 @@ func executeCommand(input string) {
 		AddNode(commandArgs)
 	case "remove-node":
 		RemoveNode(commandArgs)
+	case "cluster-info":
+		GetAllNode(commandArgs)
 	default:
 	}
 
@@ -186,6 +194,10 @@ func validateCommand(command string, args []string) error {
 	case "remove-node":
 		if len(args) != 2 {
 			return errors.New("usage: remove-node <host> <port>")
+		}
+	case "cluster-info":
+		if len(args) != 0 {
+			return errors.New("usage: cluster-info")
 		}
 	default:
 		return errors.New("unknown command: " + command)
@@ -567,13 +579,13 @@ func RemoveNode(args []string) string {
 	return r.GetResponse()
 }
 
-func requestLog() string {
+func requestLog(client pb.RaftServiceClient) string {
 	fmt.Println("Request Log", targetServer)
 
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
 	defer cancel()
 
-	r, err := serviceClient.ReqLog(ctx, &pb.LogRequest{})
+	r, err := client.ReqLog(ctx, &pb.LogRequest{})
 	if err != nil {
 		ClientLogger.Println(err)
 		return err.Error()
@@ -591,6 +603,67 @@ func requestLog() string {
 	fmt.Println(formattedLog)
 
 	return formattedLog
+}
+
+func GetAllNode(args []string) ([]NodeResponse, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
+	defer cancel()
+
+	r, err := serviceClient.ReqClusterInfo(ctx, &pb.ClusterInfoRequest{})
+	if err != nil {
+		ClientLogger.Println(err)
+		return nil, err
+	}
+
+	if r.LeaderAddress != "" {
+		err = changeToLeaderAddress(r.LeaderAddress)
+		if err != nil {
+			ClientLogger.Println(err)
+			return nil, err
+		}
+
+		r, err = serviceClient.ReqClusterInfo(ctx, &pb.ClusterInfoRequest{})
+		if err != nil {
+			ClientLogger.Println(err)
+			return nil, err
+		}
+
+		// for _, nodeInfo := range r.NodeInfo {
+		// 	fmt.Println(nodeInfo.Address)
+		// }
+	}
+
+	var buffer bytes.Buffer
+	buffer.WriteString("Node:\n")
+	// fmt.Println(len(r.NodeInfo))
+	var responses []NodeResponse
+	for _, node := range r.NodeInfo {
+		err = changeToLeaderAddress(node.Address)
+		if err != nil {
+			ClientLogger.Println(err)
+			return nil, err
+		}
+
+		stateResponse, _ := serviceClient.NodeState(ctx, &pb.StateRequest{})
+
+		var state string
+		if stateResponse == nil {
+			state = "INACTIVE"
+		} else {
+			state = stateResponse.State
+		}
+		buffer.WriteString(fmt.Sprintf("%s: %s\n", node.Address, state))
+
+		responses = append(responses, NodeResponse{
+			Address: node.Address,
+			State:   state,
+			Log:     "",
+		})
+	}
+	formattedNode := buffer.String()
+	fmt.Println(formattedNode)
+
+	return responses, nil
 }
 
 func changeServer(args []string) {
@@ -616,6 +689,7 @@ func listenWeb(args []string) {
 	address := t.NewAddress(host, port)
 
 	// TODO: correct HTTP method
+	//Client Web
 	http.HandleFunc("/ping", loggingMiddleware(handlePing))
 	http.HandleFunc("/get", loggingMiddleware(handleGet))
 	http.HandleFunc("/set", loggingMiddleware(handleSet))
@@ -623,6 +697,12 @@ func listenWeb(args []string) {
 	http.HandleFunc("/del", loggingMiddleware(handleDel))
 	http.HandleFunc("/append", loggingMiddleware(handleAppend))
 	http.HandleFunc("/request-log", loggingMiddleware(handleRequestLog))
+
+	// Management Dashboard
+	http.HandleFunc("/node", loggingMiddleware(handleGetAllNode))
+	http.HandleFunc("/log", loggingMiddleware(handleGetLog))
+	http.HandleFunc("/node/delete", loggingMiddleware(handleRemoveNode))
+	http.HandleFunc("/node/add", loggingMiddleware(handleAddNode))
 
 	fmt.Println("Starting HTTP server on", &address)
 	err = http.ListenAndServe(address.String(), nil)
@@ -648,6 +728,7 @@ func help() {
 	fmt.Println("exit           : Exit the program.")
 	fmt.Println("add-node       : Add new raft node")
 	fmt.Println("remove-node    : Remove raft node")
+	fmt.Println("cluster-info   : Get all node address and state")
 }
 
 func exit() {

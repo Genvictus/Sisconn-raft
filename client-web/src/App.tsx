@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import APIManager from './components/APIManager';
 import Log from './components/Log';
 
@@ -8,6 +8,11 @@ function App() {
   const appendLog = (log: string) => {
     setLogs(prevLogs => prevLogs + '> ' + log + '\n');
   };
+
+  
+  useEffect(() => {
+    document.title = 'Sisconn Raft Client';
+  }, []);
 
   return (
     <div className="w-screen h-screen">

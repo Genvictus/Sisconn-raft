@@ -1,5 +1,5 @@
 import axios, { AxiosError, AxiosRequestConfig } from "axios";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ExecuteButton from "./ExecuteButton";
 import InputNumber from "./InputNumber";
 import InputText from "./InputText";
