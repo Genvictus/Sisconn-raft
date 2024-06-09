@@ -425,10 +425,6 @@ func TestRaftNode_initiateLeader(t *testing.T) {
 	}
 }
 
-func TestRaftNode_createLogEntryArgs(t *testing.T) {
-	// TODO: Add test cases.
-}
-
 func TestRaftNode_CompareTerm(t *testing.T) {
 	serverAddress1 := transport.NewAddress("localhost", 2343)
 
@@ -443,6 +439,32 @@ func TestRaftNode_CompareTerm(t *testing.T) {
 
 	if state != _StepDown {
 		t.Errorf("Expected state change to _StepDown, but got: %d", state)
+	}
+}
+
+func TestRaftNode_createLogEntryArgs(t *testing.T) {
+	serverAddress := transport.NewAddress("localhost", 2344)
+
+	node := NewNode(serverAddress.String())
+	
+	node.log.logEntries = []keyValueReplicationEntry{
+		{term: 1, key: "key1", value: "value1"},
+		{term: 1, key: "key2", value: "value2"},
+		{term: 1, key: "key3", value: "value3"},
+		{term: 2, key: "key1", value: " append1"},
+		{term: 2, key: "key2", value: "replace2"},
+		{term: 2, key: "key3", value: ""},
+		{term: 3, key: "key1", value: "newvalue1"},
+		{term: 3, key: "key2", value: " append2"},
+		{term: 3, key: "key3", value: "value3"},
+	}
+
+	args := node.createLogEntryArgs(3, 5)
+
+	for i, entry := range args {
+		if entry.Term != node.log.logEntries[i+3].term {
+			t.Errorf("Expected term to be %d, but got: %d", node.log.logEntries[i+3].term, entry.Term)
+		}
 	}
 }
 
