@@ -4,10 +4,10 @@ import (
 	pb "Sisconn-raft/raft/raftpc"
 	"Sisconn-raft/raft/transport"
 	"context"
-	"fmt"
 	"log"
 	"net"
 	"reflect"
+	"strings"
 	"testing"
 
 	"google.golang.org/grpc"
@@ -65,7 +65,9 @@ func TestRaftNode_AddConnections(t *testing.T) {
 
 	string_out := string(out)
 
-	fmt.Println(string_out)
+	if !strings.Contains(string_out, "fails") {
+		t.Errorf("Expected error message to contain: %s, but got: %s", "fails", string_out)
+	}
 }
 
 func TestRaftNode_RemoveConnections(t *testing.T) {
@@ -230,8 +232,8 @@ func TestRaftNode_appendEntries(t *testing.T) {
 }
 
 func TestRaftNode_singleAppendEntries(t *testing.T) {
-	serverAddress1 := transport.NewAddress("localhost", 3000)
-	serverAddress2 := transport.NewAddress("localhost", 3001)
+	serverAddress1 := transport.NewAddress("localhost", 8011)
+	serverAddress2 := transport.NewAddress("localhost", 8012)
 
 	node := NewNode(serverAddress1.String())
 	node2 := NewNode(serverAddress2.String())

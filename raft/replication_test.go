@@ -1,6 +1,8 @@
 package raft
 
-import "testing"
+import (
+	"testing"
+)
 
 var (
 	dummyTransactions = []TransactionEntry{
@@ -206,10 +208,31 @@ func TestKeyValueReplication_replaceLog(t *testing.T) {
 		t.Errorf("key3 not replayed properly, Expected: %s, but got: %s", expectedValue3, replication.replicatedState["key3"])
 	}
 
+	// Test replace log after replay
+	replication.replaceLog(7, sliceLogEntries)
+
+	t.Log("replicated state: ", len(replication.replicatedState))
+	
+	if replication.lastIndex != 9 {
+		t.Errorf("lastIndex not updated properly, Expected: %d, but got: %d", 9, replication.lastIndex)
+	}
+
+	if replication.commitIndex != 0 {
+		t.Errorf("commitIndex not updated properly, Expected: %d, but got: %d", 0, replication.commitIndex)
+	}
+
+	if replication.lastApplied != 6 {
+		t.Errorf("lastApplied not updated properly, Expected: %d, but got: %d", 6, replication.lastApplied)
+	}
+
+	if len(replication.logEntries) != 10 {
+		t.Errorf("logEntries not updated properly, Expected: %d, but got: %d", 10, len(replication.logEntries))
+	}
+
 	// Test replace commited log
 	replication.commitEntries(6)
 
-	// Handle panics
+	// handle panics
 	defer func() {
 		if r := recover(); r == nil {
 			t.Errorf("Replacing commited log did not panic")
