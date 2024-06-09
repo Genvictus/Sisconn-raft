@@ -41,6 +41,7 @@ const DashboardTable: React.FC<DashboardTableProps> = ({
               <button
                 className=' text-sm bg-red-600 hover:bg-red-700'
                 onClick={() => deleteNode(index)}
+                disabled
               >
                 Delete
               </button>

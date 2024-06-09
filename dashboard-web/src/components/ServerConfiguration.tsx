@@ -38,6 +38,7 @@ const ServerConfiguration: React.FC<ServerConfigurationProps> = ({
       <button
         className='my-5 bg-green-600 hover:bg-green-700'
         onClick={() => addNode(nodeHost, nodePort)}
+        disabled
       >
         Add New Node
       </button>
