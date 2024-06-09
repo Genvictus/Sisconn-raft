@@ -5,6 +5,8 @@ import (
 	"context"
 	"log"
 	"strconv"
+
+	"google.golang.org/grpc/peer"
 )
 
 /*
@@ -25,9 +27,12 @@ func (s *ServiceServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.Messa
 			LeaderAddress: s.Server.leaderAddress,
 		}, nil
 	}
-	// maybe add a dedicated logger
-	// TODO: get sender's IP to be outputted to log
-	log.Println("ping received")
+	ServerLogger.Println("ping received")
+
+	p, ok := peer.FromContext(ctx)
+	if ok {
+		ServerLogger.Println("Sender's IP:", p.Addr.String())
+	}
 	return &pb.MessageResponse{
 		Response:      OkResponse,
 		LeaderAddress: "",
@@ -341,7 +346,7 @@ func (s *RaftServer) AppendEntries(ctx context.Context, in *pb.AppendEntriesArg)
 	s.Server.log.indexLock.RUnlock()
 	if lastIndex < in.PrevLogIndex {
 		// if index is out of bound (newer entries)
-		log.Println("Request failed: ")
+		ServerLogger.Println("Request failed: index is out of bound")
 		res.Success = false
 		return &res, nil
 	}

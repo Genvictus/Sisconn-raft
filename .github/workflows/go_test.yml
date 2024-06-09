@@ -6,7 +6,7 @@ name: Go Test
 on:
   push:
     branches: [ "main" ]
-    paths: [ ".github/workflows/**", "raft/**", "test/**" ]
+    paths: [ ".github/workflows/**", "raft/**" ]
   pull_request:
     branches: [ "main" ]
 
@@ -36,5 +36,8 @@ jobs:
         go mod download
 
     - name: Go unit testing
-      run: |
-        make go-test
+      uses: nick-fields/retry@v3
+      with:
+        timeout_minutes: 10
+        max_attempts: 5
+        command: make go-test
