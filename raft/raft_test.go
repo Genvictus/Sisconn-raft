@@ -125,7 +125,7 @@ func TestRaftNode_Run(t *testing.T) {
 	PREVIOUS_ELECTION_TIMEOUT_MIN := ELECTION_TIMEOUT_MIN
 	PREVIOUS_ELECTION_TIMEOUT_MAX := ELECTION_TIMEOUT_MAX
 
-	SetRaftIntervals(1 * time.Millisecond, 2 * time.Millisecond, 3 * time.Millisecond)
+	SetRaftIntervals(1*time.Millisecond, 2*time.Millisecond, 3*time.Millisecond)
 
 	// Test stepdown leader
 	node.currentState.Store(_Leader)
@@ -433,7 +433,7 @@ func TestRaftNode_requestVotes(t *testing.T) {
 	go node7.runTest()
 
 	node7.currentState.Store(_Candidate)
-	
+
 	node7.requestVotes()
 
 	state = node7.currentState.Load()
@@ -554,7 +554,7 @@ func TestRaftNode_createLogEntryArgs(t *testing.T) {
 	serverAddress := transport.NewAddress("localhost", 2344)
 
 	node := NewNode(serverAddress.String())
-	
+
 	node.log.logEntries = []keyValueReplicationEntry{
 		{term: 1, key: "key1", value: "value1"},
 		{term: 1, key: "key2", value: "value2"},

@@ -399,6 +399,46 @@ func TestRequestVote(t *testing.T) {
 	if voteResponse.VoteGranted != expectedVoteGranted {
 		t.Errorf("Expected VoteGranted: %v, but got: %v", expectedVoteGranted, voteResponse.VoteGranted)
 	}
+
+	// approved term and idx request
+
+	raftNode2.log = *dummyReplicationHelperInt(3)
+	raftNode1.log = *dummyReplicationHelperInt(3)
+
+	request = &pb.RequestVoteArg{
+		Term:         3,
+		CandidateId:  "candidate1",
+		LastLogTerm:  3,
+		LastLogIndex: map[uint32]uint64{0: 9},
+	}
+
+	voteResponse, err = raftServer2.RequestVote(ctx, request)
+	if err != nil {
+		t.Fatalf("RequestVote failed: %v", err)
+	}
+	expectedVoteGranted = true
+	if voteResponse.VoteGranted != expectedVoteGranted {
+		t.Errorf("Expected VoteGranted: %v, but got: %v", expectedVoteGranted, voteResponse.VoteGranted)
+	}
+
+	// rejected term request
+	request = &pb.RequestVoteArg{
+		Term:         4,
+		CandidateId:  "candidate1",
+		LastLogTerm:  3,
+		LastLogIndex: map[uint32]uint64{0: 1},
+	}
+
+	voteResponse, err = raftServer2.RequestVote(ctx, request)
+	if err != nil {
+		t.Fatalf("RequestVote failed: %v", err)
+	}
+
+	expectedVoteGranted = false
+	if voteResponse.VoteGranted != expectedVoteGranted {
+		t.Errorf("Expected VoteGranted: %v, but got: %v", expectedVoteGranted, voteResponse.VoteGranted)
+	}
+
 }
 
 func TestAppendEntries(t *testing.T) {
@@ -441,7 +481,7 @@ func TestAppendEntries(t *testing.T) {
 		},
 
 		LeaderCommit: 0,
-		LogType: _DataLog,
+		LogType:      _DataLog,
 	}
 
 	ctx := context.Background()
