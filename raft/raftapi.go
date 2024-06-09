@@ -228,6 +228,10 @@ type RaftServer struct {
 
 func (s *RaftServer) RequestVote(ctx context.Context, in *pb.RequestVoteArg) (*pb.VoteResult, error) {
 	log.Println("RequestVote")
+	log.Println("Current voted for:", s.Server.votedFor)
+	defer func() {
+		log.Println("Final voted for:", s.Server.votedFor)
+	}()
 
 	// fmt.Printf("RequestVote: %v\n", in.Term)
 	// fmt.Printf("Caller: %v\n", callerNode.address)
@@ -249,6 +253,7 @@ func (s *RaftServer) RequestVote(ctx context.Context, in *pb.RequestVoteArg) (*p
 
 		if followerLog.lastIndex == 0 {
 			s.Server.votedFor = in.CandidateId
+			s.Server.stateChange <- _RefreshFollower
 			result.VoteGranted = true
 			return &result, nil
 		}
@@ -258,6 +263,7 @@ func (s *RaftServer) RequestVote(ctx context.Context, in *pb.RequestVoteArg) (*p
 
 		if checkTerm && checkIdx {
 			s.Server.votedFor = in.CandidateId
+			s.Server.stateChange <- _RefreshFollower
 			result.VoteGranted = true
 			return &result, nil
 		}
