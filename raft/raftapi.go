@@ -180,12 +180,40 @@ func (s *ServiceServer) Commit(ctx context.Context, in *pb.CommitRequest) (*pb.M
 	}, nil
 }
 
-func (s *ServiceServer) AddNode(ctx context.Context, in *pb.KeyValuedRequest) (*pb.MessageResponse, error) {
-	return nil, nil
+func (s *ServiceServer) AddNode(ctx context.Context, in *pb.KeyedRequest) (*pb.MessageResponse, error) {
+	if s.Server.currentState.Load() != _Leader {
+		return &pb.MessageResponse{
+			Response:      NotLeaderResponse + s.Server.leaderAddress,
+			LeaderAddress: s.Server.leaderAddress,
+		}, nil
+	}
+	ServerLogger.Println("Adding connection:", in.Key)
+	s.Server.replications[_ConfigReplication].appendLog(s.Server.currentTerm, in.Key, "")
+	// Replicate Entries to commit
+	go s.Server.replicateEntry(context.Background(), _ConfigReplication)
+	go s.Server.makeConnections()
+	return &pb.MessageResponse{
+		Response:      OkResponse,
+		LeaderAddress: "",
+	}, nil
 }
 
 func (s *ServiceServer) RemoveNode(ctx context.Context, in *pb.KeyedRequest) (*pb.MessageResponse, error) {
-	return nil, nil
+	if s.Server.currentState.Load() != _Leader {
+		return &pb.MessageResponse{
+			Response:      NotLeaderResponse + s.Server.leaderAddress,
+			LeaderAddress: s.Server.leaderAddress,
+		}, nil
+	}
+	ServerLogger.Println("Removing connection:", in.Key)
+	s.Server.replications[_ConfigReplication].appendLog(s.Server.currentTerm, _DELETE_KEY, in.Key)
+	// Replicate Entries to commit
+	go s.Server.replicateEntry(context.Background(), _ConfigReplication)
+	s.Server.makeConnections()
+	return &pb.MessageResponse{
+		Response:      OkResponse,
+		LeaderAddress: "",
+	}, nil
 }
 
 /*
@@ -198,7 +226,7 @@ type RaftServer struct {
 }
 
 func (s *RaftServer) RequestVote(ctx context.Context, in *pb.RequestVoteArg) (*pb.VoteResult, error) {
-	ServerLogger.Println("RequestVote")
+	ServerLogger.Println("RequestVote Received from", in.CandidateId)
 	ServerLogger.Println("Current voted for:", s.Server.votedFor)
 	defer func() {
 		ServerLogger.Println("Final voted for:", s.Server.votedFor)
@@ -305,12 +333,19 @@ func (s *RaftServer) AppendEntries(ctx context.Context, in *pb.AppendEntriesArg)
 	// start with goroutine? is this long running?
 	log.replaceLog(in.PrevLogIndex+1, logEntries)
 
+	log.indexLock.RLock()
+	newLastIndex := log.lastIndex
+	log.indexLock.RUnlock()
 	// 5. If leaderCommit > commitIndex, set commitIndex =
 	// min(leaderCommit, index of last new entry)
 	if in.LeaderCommit > commitIndex {
 		// should be long running, especially if this deals with persistence
 		// i.e. writing to stable storage
-		go log.commitEntries(min(in.LeaderCommit, lastIndex))
+		go log.commitEntries(min(in.LeaderCommit, newLastIndex))
+	}
+
+	if len(logEntries) > 0 {
+		s.Server.makeConnections()
 	}
 
 	res.Success = true

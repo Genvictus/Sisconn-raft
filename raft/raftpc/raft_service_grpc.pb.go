@@ -45,7 +45,7 @@ type RaftServiceClient interface {
 	Commit(ctx context.Context, in *CommitRequest, opts ...grpc.CallOption) (*MessageResponse, error)
 	ReqLog(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*LogResponse, error)
 	ReqClusterInfo(ctx context.Context, in *ClusterInfoRequest, opts ...grpc.CallOption) (*ClusterInfoResponse, error)
-	AddNode(ctx context.Context, in *KeyValuedRequest, opts ...grpc.CallOption) (*MessageResponse, error)
+	AddNode(ctx context.Context, in *KeyedRequest, opts ...grpc.CallOption) (*MessageResponse, error)
 	RemoveNode(ctx context.Context, in *KeyedRequest, opts ...grpc.CallOption) (*MessageResponse, error)
 }
 
@@ -138,7 +138,7 @@ func (c *raftServiceClient) ReqClusterInfo(ctx context.Context, in *ClusterInfoR
 	return out, nil
 }
 
-func (c *raftServiceClient) AddNode(ctx context.Context, in *KeyValuedRequest, opts ...grpc.CallOption) (*MessageResponse, error) {
+func (c *raftServiceClient) AddNode(ctx context.Context, in *KeyedRequest, opts ...grpc.CallOption) (*MessageResponse, error) {
 	out := new(MessageResponse)
 	err := c.cc.Invoke(ctx, RaftService_AddNode_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -169,7 +169,7 @@ type RaftServiceServer interface {
 	Commit(context.Context, *CommitRequest) (*MessageResponse, error)
 	ReqLog(context.Context, *LogRequest) (*LogResponse, error)
 	ReqClusterInfo(context.Context, *ClusterInfoRequest) (*ClusterInfoResponse, error)
-	AddNode(context.Context, *KeyValuedRequest) (*MessageResponse, error)
+	AddNode(context.Context, *KeyedRequest) (*MessageResponse, error)
 	RemoveNode(context.Context, *KeyedRequest) (*MessageResponse, error)
 	mustEmbedUnimplementedRaftServiceServer()
 }
@@ -205,7 +205,7 @@ func (UnimplementedRaftServiceServer) ReqLog(context.Context, *LogRequest) (*Log
 func (UnimplementedRaftServiceServer) ReqClusterInfo(context.Context, *ClusterInfoRequest) (*ClusterInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReqClusterInfo not implemented")
 }
-func (UnimplementedRaftServiceServer) AddNode(context.Context, *KeyValuedRequest) (*MessageResponse, error) {
+func (UnimplementedRaftServiceServer) AddNode(context.Context, *KeyedRequest) (*MessageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddNode not implemented")
 }
 func (UnimplementedRaftServiceServer) RemoveNode(context.Context, *KeyedRequest) (*MessageResponse, error) {
@@ -387,7 +387,7 @@ func _RaftService_ReqClusterInfo_Handler(srv interface{}, ctx context.Context, d
 }
 
 func _RaftService_AddNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(KeyValuedRequest)
+	in := new(KeyedRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -399,7 +399,7 @@ func _RaftService_AddNode_Handler(srv interface{}, ctx context.Context, dec func
 		FullMethod: RaftService_AddNode_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RaftServiceServer).AddNode(ctx, req.(*KeyValuedRequest))
+		return srv.(RaftServiceServer).AddNode(ctx, req.(*KeyedRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

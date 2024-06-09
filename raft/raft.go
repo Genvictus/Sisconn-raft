@@ -3,7 +3,7 @@ package raft
 import (
 	pb "Sisconn-raft/raft/raftpc"
 	"context"
-	"fmt"
+	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -84,32 +84,61 @@ func NewNode(address string) *RaftNode {
 }
 
 func (r *RaftNode) SetConnections(targets []string) {
-	r.connLock.Lock()
-	defer r.connLock.Unlock()
-
 	for _, address := range targets {
 		// create connection
+		r.replications[_ConfigReplication].appendLog(r.currentTerm, address, _NodeActive)
+	}
+	r.replications[_ConfigReplication].commitEntries(r.replications[_ConfigReplication].lastIndex)
+	r.makeConnections()
+}
+
+func (r *RaftNode) makeConnections() {
+	membership := &r.replications[_ConfigReplication]
+
+	newConfig := membership.getUnionState()
+	r.connLock.Lock()
+	defer r.connLock.Unlock()
+	// remove old connections
+	for address := range r.raftClient {
+		// check if connection is still in new config
+		_, ok := newConfig[address]
+		if ok {
+			continue
+		}
+		// connection no longer in new config
+		if address == r.address {
+			// if this node is removed, quit
+			os.Exit(69)
+		}
+		r.conn[address].Close()
+		delete(r.conn, address)
+		delete(r.raftClient, address)
+	}
+	// add new connections
+	for address := range newConfig {
 		if address != r.address {
-			var conn, err = grpc.NewClient(
+			// if connection already exists, skip
+			_, ok := r.conn[address]
+			if ok {
+				continue
+			}
+
+			conn, err := grpc.NewClient(
 				address,
 				grpc.WithTransportCredentials(insecure.NewCredentials()),
 			)
 
-			// if any fails, stop the process
+			// if any fails, probably bad address
 			if err != nil {
-				fmt.Printf("Add connection %s fails, error: %v\n", address, err)
-				return
+				ServerLogger.Println("Add connection %s fails, error: %v\n", address, err)
+				continue
 			}
-
 			// if successful, add connections
 			r.conn[address] = conn
 			// create grpc client
 			r.raftClient[address] = pb.NewRaftClient(conn)
 		}
-
-		r.replications[_ConfigReplication].appendLog(r.currentTerm, address, _NodeActive)
 	}
-	r.replications[_ConfigReplication].commitEntries(r.replications[_ConfigReplication].lastIndex)
 }
 
 func (r *RaftNode) Run() {
@@ -119,10 +148,17 @@ func (r *RaftNode) Run() {
 		switch r.currentState.Load() {
 		case _Leader:
 			timer := time.NewTimer(HEARTBEAT_INTERVAL)
+			configTimer := time.NewTimer(CONFIG_UPDATE_INTERVAL)
 			select {
 			case <-timer.C:
 				// send heartbeat, synchronize log content at that
 				go r.appendEntries(true, _StateReplication, nil)
+			case <-configTimer.C:
+				if !timer.Stop() {
+					<-timer.C
+				}
+				// periodically update configuration
+				go r.replicateEntry(context.Background(), _ConfigReplication)
 			case change := <-r.stateChange:
 				if !timer.Stop() {
 					<-timer.C
@@ -225,6 +261,8 @@ func (r *RaftNode) replicateEntry(ctx context.Context, replicationType uint64) b
 }
 
 func (r *RaftNode) appendEntries(isHeartbeat bool, replicationType uint64, committedCh chan<- bool) {
+	r.connLock.RLock()
+	defer r.connLock.RUnlock()
 	// refresh heartbeat timer, appendEntries can only done by leaders
 	r.stateChange <- _NewAppendEntry
 
@@ -280,19 +318,29 @@ func (r *RaftNode) appendEntries(isHeartbeat bool, replicationType uint64, commi
 func (r *RaftNode) singleAppendEntries(address string, replicationType uint64, isHeartbeat bool) bool {
 	// check for ongoing appendEntries for target node
 	// if it is for heartbeat, try appendentries
-	followerIndex := r.followerIndex[replicationType]
+	followerIndexx := r.followerIndex[replicationType]
 	log := &r.replications[replicationType]
 
+	_, ok := followerIndexx[address]
+	if !ok {
+		log.indexLock.RLock()
+		nextIndex := log.lastIndex + 1
+		log.indexLock.RUnlock()
+		followerIndexx[address] = &followerIndex{
+			nextIndex:  nextIndex,
+			matchIndex: 0,
+		}
+	}
 	if isHeartbeat {
 		// if failed to acquire lock, there exists an appendEntries RPCs
 		// ongoing for this follower, heartbeat is OK
-		if !followerIndex[address].indexLock.TryLock() {
+		if !followerIndexx[address].indexLock.TryLock() {
 			return true
 		}
 	} else {
-		followerIndex[address].indexLock.Lock()
+		followerIndexx[address].indexLock.Lock()
 	}
-	defer followerIndex[address].indexLock.Unlock()
+	defer followerIndexx[address].indexLock.Unlock()
 
 	targetClient := r.raftClient[address]
 	var appendSuccessful = false
@@ -311,7 +359,7 @@ func (r *RaftNode) singleAppendEntries(address string, replicationType uint64, i
 		}
 
 		// get follower's log (supposedly) last index and term
-		var prevLogIndex = followerIndex[address].nextIndex - 1
+		var prevLogIndex = followerIndexx[address].nextIndex - 1
 		var prevLogTerm = log.getEntries(prevLogIndex, prevLogIndex)[0].term
 		// prepare log entries
 		var logEntries []*pb.LogEntry
@@ -354,11 +402,11 @@ func (r *RaftNode) singleAppendEntries(address string, replicationType uint64, i
 		// check if append is successful
 		if !result.Success {
 			// decrement the index for next appendEntries()
-			followerIndex[address].nextIndex--
+			followerIndexx[address].nextIndex--
 		} else {
 			appendSuccessful = true
 			// update the index
-			followerIndex[address].nextIndex = lastIndex + 1
+			followerIndexx[address].nextIndex = lastIndex + 1
 		}
 
 		// if call is for heartbeat
@@ -504,7 +552,7 @@ func (r *RaftNode) compareTerm(receivedTerm uint64) {
 
 // additional funcs to help with implementation
 func (r *RaftNode) createLogEntryArgs(startIndex uint64, lastIndex uint64, replicationType uint64) []*pb.LogEntry {
-	log := r.replications[replicationType]
+	log := &r.replications[replicationType]
 
 	logEntries := log.getEntries(startIndex, lastIndex)
 	var argEntries = make([]*pb.LogEntry, len(logEntries))

@@ -18,7 +18,7 @@ service RaftService {
     rpc ReqLog (LogRequest) returns (LogResponse);
     rpc ReqClusterInfo (ClusterInfoRequest) returns (ClusterInfoResponse);
 
-    rpc AddNode (KeyValuedRequest) returns (MessageResponse);
+    rpc AddNode (KeyedRequest) returns (MessageResponse);
     rpc RemoveNode (KeyedRequest) returns (MessageResponse);
 }
 

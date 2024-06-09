@@ -495,9 +495,8 @@ func AddNode(args []string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
 	defer cancel()
 
-	r, err := serviceClient.AddNode(ctx, &pb.KeyValuedRequest{
-		Key:   host + ":" + args[1],
-		Value: "",
+	r, err := serviceClient.AddNode(ctx, &pb.KeyedRequest{
+		Key: host + ":" + args[1],
 	})
 
 	if err != nil {
@@ -513,9 +512,8 @@ func AddNode(args []string) string {
 			return err.Error()
 		}
 
-		r, err = serviceClient.AddNode(ctx, &pb.KeyValuedRequest{
-			Key:   host + ":" + args[1],
-			Value: "",
+		r, err = serviceClient.AddNode(ctx, &pb.KeyedRequest{
+			Key: host + ":" + args[1],
 		})
 
 		if err != nil {

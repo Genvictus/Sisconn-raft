@@ -19,6 +19,8 @@ var (
 	ELECTION_TIMEOUT_MAX time.Duration = 9000 * time.Millisecond
 )
 
+var CONFIG_UPDATE_INTERVAL time.Duration = 5000 * time.Millisecond
+
 func SetClientTimeout(t time.Duration) {
 	CLIENT_TIMEOUT = t
 }
