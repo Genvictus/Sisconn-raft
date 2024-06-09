@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"google.golang.org/grpc"
 )
@@ -109,7 +110,48 @@ func TestRaftNode_RemoveConnections(t *testing.T) {
 }
 
 func TestRaftNode_Run(t *testing.T) {
-	// TODO: Add test cases.
+	serverAddress := transport.NewAddress("localhost", 2024)
+	node := NewNode(serverAddress.String())
+	ListenServer(node, grpc.NewServer())
+
+	node.AddConnections([]string{
+		serverAddress.String(),
+	})
+
+	go node.Run()
+
+	// Prepare config
+	PREVIOUS_HEARTBEAT_INTERVAL := HEARTBEAT_INTERVAL
+	PREVIOUS_ELECTION_TIMEOUT_MIN := ELECTION_TIMEOUT_MIN
+	PREVIOUS_ELECTION_TIMEOUT_MAX := ELECTION_TIMEOUT_MAX
+
+	SetRaftIntervals(1 * time.Millisecond, 2 * time.Millisecond, 3 * time.Millisecond)
+
+	// Test stepdown leader
+	node.currentState.Store(_Leader)
+	node.stateChange <- _StepDown
+
+	state := node.currentState.Load()
+	if state != _Follower {
+		t.Errorf("Expected leader state to be _Follower, but got: %d", state)
+	}
+
+	// Test stepdown candidate
+	// refresh follower
+	node.currentState.Store(_Candidate)
+	node.stateChange <- _RefreshFollower
+
+	node.stateChange <- _StepDown
+
+	state = node.currentState.Load()
+	if state != _Follower {
+		t.Errorf("Expected candidate state to be _Follower, but got: %d", state)
+	}
+
+	// TODO test timer timeout if can
+
+	// Restore config
+	SetRaftIntervals(PREVIOUS_HEARTBEAT_INTERVAL, PREVIOUS_ELECTION_TIMEOUT_MIN, PREVIOUS_ELECTION_TIMEOUT_MAX)
 }
 
 func TestRaftNode_RunTest(t *testing.T) {
