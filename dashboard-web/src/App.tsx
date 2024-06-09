@@ -51,7 +51,7 @@ function App() {
 
   return (
     <div className="w-screen h-screen">
-      <h1>Sisconn Raft Management Dashboard</h1>
+      <h1 className='pb-20 font-semibold'>Sisconn Raft Management Dashboard</h1>
       
       <div className="flex m-4">
         <LogModal

@@ -33,7 +33,7 @@ const DashboardTable: React.FC<DashboardTableProps> = ({
             <th>Delete</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody >
           {nodes.map((node, index) => (
             <tr key={index}>
               <td>{index + 1}</td>
@@ -41,7 +41,7 @@ const DashboardTable: React.FC<DashboardTableProps> = ({
               <td>{node.Address}</td>
               <td>
                 <button
-                  className=' text-sm bg-blue-500 hover:bg-blue-700'
+                  className=' m-2 text-sm bg-blue-600 hover:bg-blue-700'
                   onClick={() => openLogModal(index)}
                 >
                   View Log
@@ -49,7 +49,7 @@ const DashboardTable: React.FC<DashboardTableProps> = ({
               </td>
               <td>
                 <button
-                  className=' text-sm bg-red-500 hover:bg-red-700'
+                  className=' text-sm bg-red-600 hover:bg-red-700'
                   onClick={() => deleteNode(index)}
                 >
                   Delete
