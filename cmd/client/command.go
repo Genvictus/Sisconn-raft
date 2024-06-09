@@ -32,6 +32,7 @@ type Transaction struct {
 type NodeResponse struct {
 	Address string
 	State   string
+	Log     string
 }
 
 var TransactionList []Transaction
@@ -656,6 +657,7 @@ func GetAllNode(args []string) ([]NodeResponse, error) {
 		responses = append(responses, NodeResponse{
 			Address: node.Address,
 			State:   state,
+			Log:     "",
 		})
 	}
 	formattedNode := buffer.String()

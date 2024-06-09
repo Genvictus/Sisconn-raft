@@ -35,10 +35,10 @@ const DashboardTable: React.FC<DashboardTableProps> = ({
         </thead>
         <tbody>
           {nodes.map((node, index) => (
-            <tr key={node.address}>
+            <tr key={index}>
               <td>{index + 1}</td>
-              <td>{node.state}</td>
-              <td>{node.address}</td>
+              <td>{node.State}</td>
+              <td>{node.Address}</td>
               <td>
                 <button
                   className=' text-sm bg-blue-500 hover:bg-blue-700'

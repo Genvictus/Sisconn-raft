@@ -22,10 +22,10 @@ const LogModal: React.FC<LogModalProps> = ({
             overlayClassName="fixed inset-0 bg-gray-500 bg-opacity-50"
         >
             <div className=" bg-black p-10 rounded-lg h-full">
-                <h1 className="text-2xl font-semibold mb-4">Node {node.address} Log</h1>
+                <h1 className="text-2xl font-semibold mb-4">Node {node.Address} Log</h1>
                 <textarea
                     className='w-full h-3/4 border border-gray-300 rounded-lg px-3 py-2 mb-4 resize-none overflow-auto outline-none border-none text-xl'
-                    value={node.log}
+                    value={node.Log}
                     readOnly >
                 </textarea>
                 <button

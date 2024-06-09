@@ -1,7 +1,7 @@
 interface RaftNode {
-  address: string;
-  state: string;
-  log: string;
+  Address: string;
+  State: string;
+  Log: string;
 }
 
 export default RaftNode;

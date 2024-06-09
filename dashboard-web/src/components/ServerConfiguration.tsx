@@ -3,7 +3,7 @@ import InputNumber from "./InputNumber";
 import InputText from "./InputText";
 
 type ServerConfigurationProps = {
-  loadNodes: () => void;
+  loadNodes: (serverAddress: string) => void;
   addNode: () => void;
 };
 
@@ -26,7 +26,7 @@ const ServerConfiguration: React.FC<ServerConfigurationProps> = ({
       
       <button
         className='my-5 bg-green-500 hover:bg-green-700'
-        onClick={loadNodes}
+        onClick={() => loadNodes(serverAddress)}
       >
         Fetch Nodes
       </button>

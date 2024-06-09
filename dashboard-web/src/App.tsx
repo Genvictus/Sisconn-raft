@@ -1,3 +1,4 @@
+import axios, { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import './App.css';
 import DashboardTable from './components/DashboardTable';
@@ -11,9 +12,9 @@ function App() {
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
 
   const dummyNode: RaftNode = {
-    address: '',
-    state: '',
-    log: ''
+    Address: '',
+    State: '',
+    Log: ''
   }
 
   const openLogModal = (index: number) => {
@@ -25,18 +26,21 @@ function App() {
     setIsLogModalOpen(false);
   }
 
-  const loadNodes = () => {
-    fetch('http://localhost:3000/nodes')
-      .then(res => res.json())
-      .then(data => setNodes(data))
-      .catch(err => console.error(err));
+  const loadNodes = (serverAddress: string) => {
+    axios.get<RaftNode[]>(`${serverAddress}/node`)
+    .then((response) => {
+      console.log(response.data);
+      setNodes(response.data);
+    }).catch((error: AxiosError) => {
+      console.error("Error fetching nodes: ", error.message);
+    });
   }
 
   const addNode = () => {
     const newNode: RaftNode = {
-      address: `http://localhost:${Math.floor(Math.random() * 10000)}`,
-      state: 'Follower',
-      log: 'tes\ntest\ntest\ntes\ntest\ntest\ntes\ntest\ntest\ntes\ntest\ntest\ntes\ntest\ntest\ntes\ntest\ntest\n\ntes\ntest\ntest\n\ntes\ntest\ntest\n'
+      Address: `http://localhost:${Math.floor(Math.random() * 10000)}`,
+      State: 'Follower',
+      Log: 'tes\ntest\ntest\ntes\ntest\ntest\ntes\ntest\ntest\ntes\ntest\ntest\ntes\ntest\ntest\ntes\ntest\ntest\n\ntes\ntest\ntest\n\ntes\ntest\ntest\n'
     };
     setNodes([...nodes, newNode]);
   };
