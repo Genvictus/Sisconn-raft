@@ -170,7 +170,16 @@ func (k *keyValueReplication) replaceLog(startIndex uint64, logEntries []keyValu
 	k.logEntries = append(k.logEntries[:startIndex], logEntries...)
 	k.lastIndex = startIndex - 1 + uint64(len(logEntries))
 
-	// TODO: update temporary replicated state
+	k.tempReplicatedState = map[string]string{}
+	k.stateLock.RLock()
+	for key, value := range k.replicatedState {
+		k.tempReplicatedState[key] = value
+	}
+	k.stateLock.RUnlock()
+
+	for i := k.lastApplied; i < k.lastIndex; i++ {
+		k.tempReplicatedState[k.logEntries[i].key] = k.logEntries[i].value
+	}
 
 	k.logLock.Unlock()
 	k.indexLock.Unlock()
