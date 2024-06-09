@@ -4,6 +4,8 @@ import (
 	pb "Sisconn-raft/raft/raftpc"
 	"context"
 	"strconv"
+
+	"google.golang.org/grpc/peer"
 )
 
 /*
@@ -24,9 +26,14 @@ func (s *ServiceServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.Messa
 			LeaderAddress: s.Server.leaderAddress,
 		}, nil
 	}
-	// maybe add a dedicated logger
-	// TODO: get sender's IP to be outputted to log
 	ServerLogger.Println("ping received")
+
+	p, ok := peer.FromContext(ctx)
+	if ok {
+		ServerLogger.Println("Sender's IP:", p.Addr.String())
+	} else {
+		ServerLogger.Println("Could not extract sender's IP")
+	}
 	return &pb.MessageResponse{
 		Response:      OkResponse,
 		LeaderAddress: "",
