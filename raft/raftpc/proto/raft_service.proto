@@ -16,6 +16,7 @@ service RaftService {
     rpc Commit (CommitRequest) returns (MessageResponse);
 
     rpc ReqLog (LogRequest) returns (LogResponse);
+    rpc ReqClusterInfo (ClusterInfoRequest) returns (CLusterInfoResponse);
 
     rpc AddNode (KeyValuedRequest) returns (MessageResponse);
     rpc RemoveNode (KeyedRequest) returns (MessageResponse);
@@ -61,4 +62,17 @@ message CommitEntry {
 
 message CommitRequest {
     repeated CommitEntry commitEntries = 1;
+}
+
+message ClusterInfoRequest {
+    // none, for now; in case request log uses parameter in the future
+}
+
+message NodeInfo {
+    uint64 state = 1
+    string address = 2
+}
+
+message ClusterInfoResponse {
+    repeated NodeInfo = 1
 }
