@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-var ServerLogger *log.Logger
+var ServerLogger = log.New(os.Stdout, "", log.LstdFlags)
 
 func randMs(minDuration time.Duration, maxDuration time.Duration) time.Duration {
 	randRange := maxDuration.Milliseconds() - minDuration.Milliseconds()
