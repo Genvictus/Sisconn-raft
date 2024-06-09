@@ -19,16 +19,17 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	RaftService_Ping_FullMethodName       = "/RaftService/Ping"
-	RaftService_Get_FullMethodName        = "/RaftService/Get"
-	RaftService_Set_FullMethodName        = "/RaftService/Set"
-	RaftService_Strln_FullMethodName      = "/RaftService/Strln"
-	RaftService_Del_FullMethodName        = "/RaftService/Del"
-	RaftService_Append_FullMethodName     = "/RaftService/Append"
-	RaftService_Commit_FullMethodName     = "/RaftService/Commit"
-	RaftService_ReqLog_FullMethodName     = "/RaftService/ReqLog"
-	RaftService_AddNode_FullMethodName    = "/RaftService/AddNode"
-	RaftService_RemoveNode_FullMethodName = "/RaftService/RemoveNode"
+	RaftService_Ping_FullMethodName           = "/RaftService/Ping"
+	RaftService_Get_FullMethodName            = "/RaftService/Get"
+	RaftService_Set_FullMethodName            = "/RaftService/Set"
+	RaftService_Strln_FullMethodName          = "/RaftService/Strln"
+	RaftService_Del_FullMethodName            = "/RaftService/Del"
+	RaftService_Append_FullMethodName         = "/RaftService/Append"
+	RaftService_Commit_FullMethodName         = "/RaftService/Commit"
+	RaftService_ReqLog_FullMethodName         = "/RaftService/ReqLog"
+	RaftService_ReqClusterInfo_FullMethodName = "/RaftService/ReqClusterInfo"
+	RaftService_AddNode_FullMethodName        = "/RaftService/AddNode"
+	RaftService_RemoveNode_FullMethodName     = "/RaftService/RemoveNode"
 )
 
 // RaftServiceClient is the client API for RaftService service.
@@ -43,6 +44,7 @@ type RaftServiceClient interface {
 	Append(ctx context.Context, in *KeyValuedRequest, opts ...grpc.CallOption) (*MessageResponse, error)
 	Commit(ctx context.Context, in *CommitRequest, opts ...grpc.CallOption) (*MessageResponse, error)
 	ReqLog(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*LogResponse, error)
+	ReqClusterInfo(ctx context.Context, in *ClusterInfoRequest, opts ...grpc.CallOption) (*ClusterInfoResponse, error)
 	AddNode(ctx context.Context, in *KeyValuedRequest, opts ...grpc.CallOption) (*MessageResponse, error)
 	RemoveNode(ctx context.Context, in *KeyedRequest, opts ...grpc.CallOption) (*MessageResponse, error)
 }
@@ -135,6 +137,16 @@ func (c *raftServiceClient) ReqLog(ctx context.Context, in *LogRequest, opts ...
 	return out, nil
 }
 
+func (c *raftServiceClient) ReqClusterInfo(ctx context.Context, in *ClusterInfoRequest, opts ...grpc.CallOption) (*ClusterInfoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ClusterInfoResponse)
+	err := c.cc.Invoke(ctx, RaftService_ReqClusterInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *raftServiceClient) AddNode(ctx context.Context, in *KeyValuedRequest, opts ...grpc.CallOption) (*MessageResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MessageResponse)
@@ -167,6 +179,7 @@ type RaftServiceServer interface {
 	Append(context.Context, *KeyValuedRequest) (*MessageResponse, error)
 	Commit(context.Context, *CommitRequest) (*MessageResponse, error)
 	ReqLog(context.Context, *LogRequest) (*LogResponse, error)
+	ReqClusterInfo(context.Context, *ClusterInfoRequest) (*ClusterInfoResponse, error)
 	AddNode(context.Context, *KeyValuedRequest) (*MessageResponse, error)
 	RemoveNode(context.Context, *KeyedRequest) (*MessageResponse, error)
 	mustEmbedUnimplementedRaftServiceServer()
@@ -199,6 +212,9 @@ func (UnimplementedRaftServiceServer) Commit(context.Context, *CommitRequest) (*
 }
 func (UnimplementedRaftServiceServer) ReqLog(context.Context, *LogRequest) (*LogResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReqLog not implemented")
+}
+func (UnimplementedRaftServiceServer) ReqClusterInfo(context.Context, *ClusterInfoRequest) (*ClusterInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReqClusterInfo not implemented")
 }
 func (UnimplementedRaftServiceServer) AddNode(context.Context, *KeyValuedRequest) (*MessageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddNode not implemented")
@@ -363,6 +379,24 @@ func _RaftService_ReqLog_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RaftService_ReqClusterInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClusterInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RaftServiceServer).ReqClusterInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RaftService_ReqClusterInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RaftServiceServer).ReqClusterInfo(ctx, req.(*ClusterInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _RaftService_AddNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(KeyValuedRequest)
 	if err := dec(in); err != nil {
@@ -437,6 +471,10 @@ var RaftService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ReqLog",
 			Handler:    _RaftService_ReqLog_Handler,
+		},
+		{
+			MethodName: "ReqClusterInfo",
+			Handler:    _RaftService_ReqClusterInfo_Handler,
 		},
 		{
 			MethodName: "AddNode",

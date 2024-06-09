@@ -473,6 +473,146 @@ func (x *CommitRequest) GetCommitEntries() []*CommitEntry {
 	return nil
 }
 
+type ClusterInfoRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *ClusterInfoRequest) Reset() {
+	*x = ClusterInfoRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_raft_service_proto_msgTypes[9]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ClusterInfoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClusterInfoRequest) ProtoMessage() {}
+
+func (x *ClusterInfoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_raft_service_proto_msgTypes[9]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClusterInfoRequest.ProtoReflect.Descriptor instead.
+func (*ClusterInfoRequest) Descriptor() ([]byte, []int) {
+	return file_raft_service_proto_rawDescGZIP(), []int{9}
+}
+
+type NodeInfo struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	State   uint64 `protobuf:"varint,1,opt,name=state,proto3" json:"state,omitempty"`
+	Address string `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
+}
+
+func (x *NodeInfo) Reset() {
+	*x = NodeInfo{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_raft_service_proto_msgTypes[10]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *NodeInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NodeInfo) ProtoMessage() {}
+
+func (x *NodeInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_raft_service_proto_msgTypes[10]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NodeInfo.ProtoReflect.Descriptor instead.
+func (*NodeInfo) Descriptor() ([]byte, []int) {
+	return file_raft_service_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *NodeInfo) GetState() uint64 {
+	if x != nil {
+		return x.State
+	}
+	return 0
+}
+
+func (x *NodeInfo) GetAddress() string {
+	if x != nil {
+		return x.Address
+	}
+	return ""
+}
+
+type ClusterInfoResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	NodeInfo []*NodeInfo `protobuf:"bytes,1,rep,name=nodeInfo,proto3" json:"nodeInfo,omitempty"`
+}
+
+func (x *ClusterInfoResponse) Reset() {
+	*x = ClusterInfoResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_raft_service_proto_msgTypes[11]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ClusterInfoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClusterInfoResponse) ProtoMessage() {}
+
+func (x *ClusterInfoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_raft_service_proto_msgTypes[11]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClusterInfoResponse.ProtoReflect.Descriptor instead.
+func (*ClusterInfoResponse) Descriptor() ([]byte, []int) {
+	return file_raft_service_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ClusterInfoResponse) GetNodeInfo() []*NodeInfo {
+	if x != nil {
+		return x.NodeInfo
+	}
+	return nil
+}
+
 var File_raft_service_proto protoreflect.FileDescriptor
 
 var file_raft_service_proto_rawDesc = []byte{
@@ -510,7 +650,16 @@ var file_raft_service_proto_rawDesc = []byte{
 	0x69, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x32, 0x0a, 0x0d, 0x63, 0x6f, 0x6d,
 	0x6d, 0x69, 0x74, 0x45, 0x6e, 0x74, 0x72, 0x69, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b,
 	0x32, 0x0c, 0x2e, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x0d,
-	0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x45, 0x6e, 0x74, 0x72, 0x69, 0x65, 0x73, 0x32, 0xb4, 0x03,
+	0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x45, 0x6e, 0x74, 0x72, 0x69, 0x65, 0x73, 0x22, 0x14, 0x0a,
+	0x12, 0x43, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x22, 0x3a, 0x0a, 0x08, 0x4e, 0x6f, 0x64, 0x65, 0x49, 0x6e, 0x66, 0x6f, 0x12,
+	0x14, 0x0a, 0x05, 0x73, 0x74, 0x61, 0x74, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x04, 0x52, 0x05,
+	0x73, 0x74, 0x61, 0x74, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x22,
+	0x3c, 0x0a, 0x13, 0x43, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x25, 0x0a, 0x08, 0x6e, 0x6f, 0x64, 0x65, 0x49, 0x6e,
+	0x66, 0x6f, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x09, 0x2e, 0x4e, 0x6f, 0x64, 0x65, 0x49,
+	0x6e, 0x66, 0x6f, 0x52, 0x08, 0x6e, 0x6f, 0x64, 0x65, 0x49, 0x6e, 0x66, 0x6f, 0x32, 0xf1, 0x03,
 	0x0a, 0x0b, 0x52, 0x61, 0x66, 0x74, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x26, 0x0a,
 	0x04, 0x50, 0x69, 0x6e, 0x67, 0x12, 0x0c, 0x2e, 0x50, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x71, 0x75,
 	0x65, 0x73, 0x74, 0x1a, 0x10, 0x2e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x52, 0x65, 0x73,
@@ -532,15 +681,19 @@ var file_raft_service_proto_rawDesc = []byte{
 	0x2e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
 	0x12, 0x23, 0x0a, 0x06, 0x52, 0x65, 0x71, 0x4c, 0x6f, 0x67, 0x12, 0x0b, 0x2e, 0x4c, 0x6f, 0x67,
 	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x0c, 0x2e, 0x4c, 0x6f, 0x67, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x2e, 0x0a, 0x07, 0x41, 0x64, 0x64, 0x4e, 0x6f, 0x64, 0x65,
-	0x12, 0x11, 0x2e, 0x4b, 0x65, 0x79, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x64, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x1a, 0x10, 0x2e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x2d, 0x0a, 0x0a, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x4e,
-	0x6f, 0x64, 0x65, 0x12, 0x0d, 0x2e, 0x4b, 0x65, 0x79, 0x65, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x1a, 0x10, 0x2e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x52, 0x65, 0x73, 0x70,
-	0x6f, 0x6e, 0x73, 0x65, 0x42, 0x1a, 0x5a, 0x18, 0x53, 0x69, 0x73, 0x63, 0x6f, 0x6e, 0x6e, 0x2d,
-	0x72, 0x61, 0x66, 0x74, 0x2f, 0x72, 0x61, 0x66, 0x74, 0x2f, 0x72, 0x61, 0x66, 0x74, 0x70, 0x63,
-	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x3b, 0x0a, 0x0e, 0x52, 0x65, 0x71, 0x43, 0x6c, 0x75, 0x73,
+	0x74, 0x65, 0x72, 0x49, 0x6e, 0x66, 0x6f, 0x12, 0x13, 0x2e, 0x43, 0x6c, 0x75, 0x73, 0x74, 0x65,
+	0x72, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x14, 0x2e, 0x43,
+	0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x12, 0x2e, 0x0a, 0x07, 0x41, 0x64, 0x64, 0x4e, 0x6f, 0x64, 0x65, 0x12, 0x11, 0x2e,
+	0x4b, 0x65, 0x79, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x1a, 0x10, 0x2e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x12, 0x2d, 0x0a, 0x0a, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x4e, 0x6f, 0x64, 0x65,
+	0x12, 0x0d, 0x2e, 0x4b, 0x65, 0x79, 0x65, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a,
+	0x10, 0x2e, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x42, 0x1a, 0x5a, 0x18, 0x53, 0x69, 0x73, 0x63, 0x6f, 0x6e, 0x6e, 0x2d, 0x72, 0x61, 0x66,
+	0x74, 0x2f, 0x72, 0x61, 0x66, 0x74, 0x2f, 0x72, 0x61, 0x66, 0x74, 0x70, 0x63, 0x62, 0x06, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -555,47 +708,53 @@ func file_raft_service_proto_rawDescGZIP() []byte {
 	return file_raft_service_proto_rawDescData
 }
 
-var file_raft_service_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_raft_service_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_raft_service_proto_goTypes = []interface{}{
-	(*PingRequest)(nil),      // 0: PingRequest
-	(*KeyValuedRequest)(nil), // 1: KeyValuedRequest
-	(*MessageResponse)(nil),  // 2: MessageResponse
-	(*KeyedRequest)(nil),     // 3: KeyedRequest
-	(*ValueResponse)(nil),    // 4: ValueResponse
-	(*LogRequest)(nil),       // 5: LogRequest
-	(*LogResponse)(nil),      // 6: LogResponse
-	(*CommitEntry)(nil),      // 7: CommitEntry
-	(*CommitRequest)(nil),    // 8: CommitRequest
-	(*LogEntry)(nil),         // 9: LogEntry
+	(*PingRequest)(nil),         // 0: PingRequest
+	(*KeyValuedRequest)(nil),    // 1: KeyValuedRequest
+	(*MessageResponse)(nil),     // 2: MessageResponse
+	(*KeyedRequest)(nil),        // 3: KeyedRequest
+	(*ValueResponse)(nil),       // 4: ValueResponse
+	(*LogRequest)(nil),          // 5: LogRequest
+	(*LogResponse)(nil),         // 6: LogResponse
+	(*CommitEntry)(nil),         // 7: CommitEntry
+	(*CommitRequest)(nil),       // 8: CommitRequest
+	(*ClusterInfoRequest)(nil),  // 9: ClusterInfoRequest
+	(*NodeInfo)(nil),            // 10: NodeInfo
+	(*ClusterInfoResponse)(nil), // 11: ClusterInfoResponse
+	(*LogEntry)(nil),            // 12: LogEntry
 }
 var file_raft_service_proto_depIdxs = []int32{
-	9,  // 0: LogResponse.logEntries:type_name -> LogEntry
+	12, // 0: LogResponse.logEntries:type_name -> LogEntry
 	7,  // 1: CommitRequest.commitEntries:type_name -> CommitEntry
-	0,  // 2: RaftService.Ping:input_type -> PingRequest
-	3,  // 3: RaftService.Get:input_type -> KeyedRequest
-	1,  // 4: RaftService.Set:input_type -> KeyValuedRequest
-	3,  // 5: RaftService.Strln:input_type -> KeyedRequest
-	3,  // 6: RaftService.Del:input_type -> KeyedRequest
-	1,  // 7: RaftService.Append:input_type -> KeyValuedRequest
-	8,  // 8: RaftService.Commit:input_type -> CommitRequest
-	5,  // 9: RaftService.ReqLog:input_type -> LogRequest
-	1,  // 10: RaftService.AddNode:input_type -> KeyValuedRequest
-	3,  // 11: RaftService.RemoveNode:input_type -> KeyedRequest
-	2,  // 12: RaftService.Ping:output_type -> MessageResponse
-	4,  // 13: RaftService.Get:output_type -> ValueResponse
-	2,  // 14: RaftService.Set:output_type -> MessageResponse
-	4,  // 15: RaftService.Strln:output_type -> ValueResponse
-	4,  // 16: RaftService.Del:output_type -> ValueResponse
-	2,  // 17: RaftService.Append:output_type -> MessageResponse
-	2,  // 18: RaftService.Commit:output_type -> MessageResponse
-	6,  // 19: RaftService.ReqLog:output_type -> LogResponse
-	2,  // 20: RaftService.AddNode:output_type -> MessageResponse
-	2,  // 21: RaftService.RemoveNode:output_type -> MessageResponse
-	12, // [12:22] is the sub-list for method output_type
-	2,  // [2:12] is the sub-list for method input_type
-	2,  // [2:2] is the sub-list for extension type_name
-	2,  // [2:2] is the sub-list for extension extendee
-	0,  // [0:2] is the sub-list for field type_name
+	10, // 2: ClusterInfoResponse.nodeInfo:type_name -> NodeInfo
+	0,  // 3: RaftService.Ping:input_type -> PingRequest
+	3,  // 4: RaftService.Get:input_type -> KeyedRequest
+	1,  // 5: RaftService.Set:input_type -> KeyValuedRequest
+	3,  // 6: RaftService.Strln:input_type -> KeyedRequest
+	3,  // 7: RaftService.Del:input_type -> KeyedRequest
+	1,  // 8: RaftService.Append:input_type -> KeyValuedRequest
+	8,  // 9: RaftService.Commit:input_type -> CommitRequest
+	5,  // 10: RaftService.ReqLog:input_type -> LogRequest
+	9,  // 11: RaftService.ReqClusterInfo:input_type -> ClusterInfoRequest
+	1,  // 12: RaftService.AddNode:input_type -> KeyValuedRequest
+	3,  // 13: RaftService.RemoveNode:input_type -> KeyedRequest
+	2,  // 14: RaftService.Ping:output_type -> MessageResponse
+	4,  // 15: RaftService.Get:output_type -> ValueResponse
+	2,  // 16: RaftService.Set:output_type -> MessageResponse
+	4,  // 17: RaftService.Strln:output_type -> ValueResponse
+	4,  // 18: RaftService.Del:output_type -> ValueResponse
+	2,  // 19: RaftService.Append:output_type -> MessageResponse
+	2,  // 20: RaftService.Commit:output_type -> MessageResponse
+	6,  // 21: RaftService.ReqLog:output_type -> LogResponse
+	11, // 22: RaftService.ReqClusterInfo:output_type -> ClusterInfoResponse
+	2,  // 23: RaftService.AddNode:output_type -> MessageResponse
+	2,  // 24: RaftService.RemoveNode:output_type -> MessageResponse
+	14, // [14:25] is the sub-list for method output_type
+	3,  // [3:14] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_raft_service_proto_init() }
@@ -713,6 +872,42 @@ func file_raft_service_proto_init() {
 				return nil
 			}
 		}
+		file_raft_service_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ClusterInfoRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_raft_service_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*NodeInfo); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_raft_service_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ClusterInfoResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -720,7 +915,7 @@ func file_raft_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_raft_service_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
