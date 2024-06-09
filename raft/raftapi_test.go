@@ -401,6 +401,126 @@ func TestRequestVote(t *testing.T) {
 	}
 }
 
+func TestAppendEntries(t *testing.T) {
+	// Setup server
+	serverAddress := transport.NewAddress("localhost", 3011)
+	lis, err := net.Listen("tcp", serverAddress.String())
+	if err != nil {
+		t.Fatalf("Failed to listen for the first server: %v", err)
+	}
+	defer lis.Close()
+
+	followerAddress := transport.NewAddress("localhost", 3012)
+	lis2, err := net.Listen("tcp", followerAddress.String())
+	if err != nil {
+		t.Fatalf("Failed to listen for the second server: %v", err)
+	}
+	defer lis2.Close()
+
+	raftNode := NewNode(serverAddress.String())
+	followerNode := NewNode(followerAddress.String())
+
+	raftNode.AddConnections([]string{serverAddress.String(), followerAddress.String()})
+	go startGRPCServer(raftNode, lis)
+	go startGRPCServer(followerNode, lis2)
+
+	raftServer := raftNode.raftClient[followerAddress.String()]
+	go raftNode.runTest()
+	go followerNode.runTest()
+
+	// AppendEntries request
+	request := &pb.AppendEntriesArg{
+		Term:         1,
+		LeaderId:     "leader1",
+		PrevLogIndex: 0,
+		PrevLogTerm:  0,
+
+		LogEntries: []*pb.LogEntry{
+			{Term: 1, Key: "key1", Value: "value1"},
+			{Term: 2, Key: "key2", Value: "value2"},
+		},
+
+		LeaderCommit: 0,
+		LogType: _DataLog,
+	}
+
+	ctx := context.Background()
+
+	// Test apppend entries
+	appendEntriesResponse, err := raftServer.AppendEntries(ctx, request)
+
+	if err != nil {
+		t.Fatalf("AppendEntries failed: %v", err)
+	}
+
+	expectedSuccess := true
+	if appendEntriesResponse.Success != expectedSuccess {
+		t.Errorf("Expected Success: %v, but got: %v", expectedSuccess, appendEntriesResponse.Success)
+	}
+
+	// Test outdated term
+	followerNode.currentTerm = 69
+	appendEntriesResponse, err = raftServer.AppendEntries(ctx, request)
+
+	if err != nil {
+		t.Fatalf("AppendEntries failed: %v", err)
+	}
+
+	expectedSuccess = false
+	if appendEntriesResponse.Success != expectedSuccess {
+		t.Errorf("Expected Success: %v, but got: %v", expectedSuccess, appendEntriesResponse.Success)
+	}
+
+	followerNode.currentTerm = 1
+
+	// Test index out of bound
+	followerNode.log.lastIndex = 69
+	request.PrevLogIndex = 420
+
+	appendEntriesResponse, err = raftServer.AppendEntries(ctx, request)
+
+	if err != nil {
+		t.Fatalf("AppendEntries failed: %v", err)
+	}
+
+	if appendEntriesResponse.Success != expectedSuccess {
+		t.Errorf("Expected Success: %v, but got: %v", expectedSuccess, appendEntriesResponse.Success)
+	}
+
+	followerNode.log.lastIndex = 0
+	request.PrevLogIndex = 0
+
+	// Test invalid entry term
+	request.PrevLogTerm = 69
+
+	appendEntriesResponse, err = raftServer.AppendEntries(ctx, request)
+
+	if err != nil {
+		t.Fatalf("AppendEntries failed: %v", err)
+	}
+
+	if appendEntriesResponse.Success != expectedSuccess {
+		t.Errorf("Expected Success: %v, but got: %v", expectedSuccess, appendEntriesResponse.Success)
+	}
+
+	request.PrevLogTerm = 0
+
+	// Test invalid entry term
+	request.LeaderCommit = 69
+
+	appendEntriesResponse, err = raftServer.AppendEntries(ctx, request)
+
+	if err != nil {
+		t.Fatalf("AppendEntries failed: %v", err)
+	}
+
+	expectedSuccess = true
+
+	if appendEntriesResponse.Success != expectedSuccess {
+		t.Errorf("Expected Success: %v, but got: %v", expectedSuccess, appendEntriesResponse.Success)
+	}
+}
+
 func TestFollowerRequestRedirect(t *testing.T) {
 	// Setup follower
 	leaderAddress := transport.NewAddress("localhost", 8000)
@@ -624,7 +744,6 @@ func TestServerPendingRequest(t *testing.T) {
 	if commitResponse.Response != "PENDING (3 commands execution)" {
 		t.Errorf("Expected response: PENDING (3 commands execution), but got: %v", commitResponse.Response)
 	}
-
 }
 
 func startGRPCServer(node *RaftNode, lis net.Listener) {

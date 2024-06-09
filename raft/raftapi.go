@@ -300,7 +300,7 @@ func (s *RaftServer) AppendEntries(ctx context.Context, in *pb.AppendEntriesArg)
 	s.Server.log.indexLock.RUnlock()
 	if lastIndex < in.PrevLogIndex {
 		// if index is out of bound (newer entries)
-		ServerLogger.Println("Request failed: ")
+		ServerLogger.Println("Request failed: index is out of bound")
 		res.Success = false
 		return &res, nil
 	}
