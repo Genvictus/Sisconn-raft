@@ -1,7 +1,9 @@
 package raft
 
 import (
+	"bytes"
 	"fmt"
+	"log"
 	"testing"
 	"time"
 )
@@ -60,5 +62,26 @@ func TestRedirectStdout(t *testing.T) {
 	
 	if string_out != "Hello, World!" {
 		t.Errorf("Expected output: %s, got %s", "Hello, World!", string_out)
+	}
+}
+
+func TestSetLogger(t *testing.T) {
+	var buf bytes.Buffer
+	logger := log.New(&buf, "[Raft] Client: ", 0)
+
+	SetLogger(logger)
+
+	if ServerLogger != logger {
+		t.Errorf("Expected logger to be set, got %v", ServerLogger)
+	}
+
+	message := "Test message"
+
+	expectedOutput := "[Raft] Client: Test message\n"
+
+	ServerLogger.Println(message)
+	
+	if buf.String() != expectedOutput {
+		t.Errorf("LogPrint failed, Expected: %s, but got: %s", expectedOutput, buf.String())
 	}
 }
