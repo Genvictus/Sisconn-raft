@@ -132,11 +132,11 @@ func (s *ServiceServer) Append(ctx context.Context, in *pb.KeyValuedRequest) (*p
 }
 
 func (s *ServiceServer) ReqLog(ctx context.Context, in *pb.LogRequest) (*pb.LogResponse, error) {
+	var leaderAddress string
 	if s.Server.currentState.Load() != _Leader {
-		return &pb.LogResponse{
-			LogEntries:    nil,
-			LeaderAddress: s.Server.leaderAddress,
-		}, nil
+		leaderAddress = s.Server.leaderAddress
+	} else {
+		leaderAddress = ""
 	}
 	log.Println("request log")
 	var logEntries []*pb.LogEntry
@@ -145,7 +145,7 @@ func (s *ServiceServer) ReqLog(ctx context.Context, in *pb.LogRequest) (*pb.LogR
 	}
 	return &pb.LogResponse{
 		LogEntries:    logEntries,
-		LeaderAddress: "",
+		LeaderAddress: leaderAddress,
 	}, nil
 }
 

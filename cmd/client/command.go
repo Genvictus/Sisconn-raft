@@ -98,7 +98,7 @@ func executeCommand(input string) {
 	case "append":
 		Append(commandArgs)
 	case "request-log":
-		requestLog()
+		requestLog(serviceClient)
 	case "change-server":
 		changeServer(commandArgs)
 	case "listen-web":
@@ -573,13 +573,13 @@ func RemoveNode(args []string) string {
 	return r.GetResponse()
 }
 
-func requestLog() string {
+func requestLog(client pb.RaftServiceClient) string {
 	fmt.Println("Request Log", targetServer)
 
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
 	defer cancel()
 
-	r, err := serviceClient.ReqLog(ctx, &pb.LogRequest{})
+	r, err := client.ReqLog(ctx, &pb.LogRequest{})
 	if err != nil {
 		ClientLogger.Println(err)
 		return err.Error()

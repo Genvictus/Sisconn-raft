@@ -1,10 +1,18 @@
 package main
 
 import (
+	pb "Sisconn-raft/raft/raftpc"
+	t "Sisconn-raft/raft/transport"
 	"encoding/json"
+	"fmt"
+	"os"
+	"strconv"
 
 	"log"
 	"net/http"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type httpHandlerFunc func(w http.ResponseWriter, r *http.Request)
@@ -108,7 +116,7 @@ func handleAppend(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleRequestLog(w http.ResponseWriter, r *http.Request) {
-	message, _ := json.Marshal(requestLog())
+	message, _ := json.Marshal(requestLog(serviceClient))
 	w.WriteHeader(http.StatusOK)
 	w.Write(message)
 }
@@ -153,5 +161,40 @@ func handleRemoveNode(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetLog(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Failed to parse form data", http.StatusBadRequest)
+		return
+	}
 
+	host := r.Form.Get("host")
+	port := r.Form.Get("port")
+
+	fmt.Println("host dan port", host, port)
+	portInt, err := strconv.Atoi(port)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		response := map[string]string{"error": "Invalid port"}
+		jsonResponse, _ := json.Marshal(response)
+		w.Write(jsonResponse)
+	}
+
+	newServer := t.NewAddress(host, portInt)
+	newClientLogger := log.New(os.Stdout, "[Raft] Client "+newServer.String()+" : ", 0)
+
+	var newConn *grpc.ClientConn
+
+	newConn, err = grpc.NewClient(targetServer.String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(t.LoggingInterceptorClient(newClientLogger)))
+	if err != nil {
+		return
+	}
+
+	newServiceClient := pb.NewRaftServiceClient(newConn)
+
+	message, _ := json.Marshal(requestLog(newServiceClient))
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(message)
+
+	newConn.Close()
 }
