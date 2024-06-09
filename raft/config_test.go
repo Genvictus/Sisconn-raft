@@ -202,3 +202,41 @@ Election Timeout Max: 500ms
 		t.Errorf("expected %q but got %s", expectedOutput, string_out)
 	}
 }
+
+func TestLoadClientConfig(t *testing.T) {
+	os.Unsetenv("CLIENT_TIMEOUT")
+
+	expectedClientTimeout := CLIENT_TIMEOUT
+
+	LoadClientConfig()
+
+	if CLIENT_TIMEOUT != expectedClientTimeout {
+		t.Errorf("LoadClientConfig failed for CLIENT_TIMEOUT, expected %v, got %v", expectedClientTimeout, CLIENT_TIMEOUT)
+	}
+
+	tests := []struct {
+		clientTimeout int
+	}{
+		{5},
+        {10},
+        {1000},
+        {500},
+        {1500},
+	}
+	
+	for _, tt := range tests {
+		t.Run("TestLoadClientConfig", func(t *testing.T) {
+			os.Setenv("CLIENT_TIMEOUT", strconv.Itoa(tt.clientTimeout))
+
+			LoadClientConfig()
+
+			expectedClientTimeout := time.Duration(tt.clientTimeout) * time.Millisecond
+
+			if CLIENT_TIMEOUT != expectedClientTimeout {
+				t.Errorf("LoadClientConfig failed for CLIENT_TIMEOUT, expected %v, got %v", expectedClientTimeout, CLIENT_TIMEOUT)
+			}
+		})
+	}
+
+	os.Unsetenv("CLIENT_TIMEOUT")
+}

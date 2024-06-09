@@ -1,7 +1,6 @@
 package raft
 
 import (
-	"log"
 	"sync"
 )
 
@@ -165,7 +164,7 @@ func (k *keyValueReplication) replaceLog(startIndex uint64, logEntries []keyValu
 	k.logLock.Lock()
 
 	if k.commitIndex >= startIndex {
-		log.Panic("Trying to replace committed log!")
+		ServerLogger.Panic("Trying to replace committed log!")
 	}
 	k.logEntries = append(k.logEntries[:startIndex], logEntries...)
 	k.lastIndex = startIndex - 1 + uint64(len(logEntries))
@@ -192,7 +191,7 @@ func (k *keyValueReplication) commitEntries(lastIndex uint64) {
 	k.replayLog(k.lastApplied+1, lastIndex)
 	k.indexLock.Lock()
 	k.commitIndex = lastIndex
-	log.Printf("Log Committed at index: %d\n", k.commitIndex)
+	ServerLogger.Printf("Log Committed at index: %d\n", k.commitIndex)
 	k.indexLock.Unlock()
 }
 

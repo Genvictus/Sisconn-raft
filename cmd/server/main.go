@@ -32,6 +32,7 @@ func main() {
 
 	serverAddress := transport.NewAddress(serverInfo.Host, serverInfo.Port)
 	ServerLogger = log.New(os.Stdout, "[Raft] Server "+serverAddress.String()+" : ", 0)
+	raft.SetLogger(ServerLogger)
 
 	err := godotenv.Load()
 	if err != nil {
