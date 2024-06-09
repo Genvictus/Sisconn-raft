@@ -1,7 +1,7 @@
 interface Node {
-    address: string;
-    state: string;
-    log: string;
-  }
+  address: string;
+  state: string;
+  log: string;
+}
 
-  export default Node;
+export default Node;
