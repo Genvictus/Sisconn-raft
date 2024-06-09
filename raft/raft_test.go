@@ -394,12 +394,35 @@ func TestRaftNode_singleRequestVote(t *testing.T) {
 	}
 }
 
-func TestRaftNode_getFollowerIndex(t *testing.T) {
-	// TODO: Add test cases.
-}
+func TestRaftNode_initiateLeader(t *testing.T) {
+	serverAddress1 := transport.NewAddress("localhost", 2014)
+	serverAddress2 := transport.NewAddress("localhost", 2015)
+	serverAddress3 := transport.NewAddress("localhost", 2016)
 
-func TestRaftNode_createLogEntryArgs(t *testing.T) {
-	// TODO: Add test cases.
+	node1 := NewNode(serverAddress1.String())
+	ListenServer(node1, grpc.NewServer())
+	node2 := NewNode(serverAddress2.String())
+	ListenServer(node2, grpc.NewServer())
+	node3 := NewNode(serverAddress3.String())
+	ListenServer(node3, grpc.NewServer())
+
+	node1.AddConnections([]string{
+		serverAddress1.String(),
+		serverAddress2.String(),
+		serverAddress3.String(),
+	})
+
+	// start node
+	go node1.runTest()
+	go node2.runTest()
+	go node3.runTest()
+
+	node1.initiateLeader()
+
+	state := node1.currentState.Load()
+	if state != _Leader {
+		t.Errorf("Expected state to be _Leader, but got: %d", state)
+	}
 }
 
 func TestRaftNode_CompareTerm(t *testing.T) {
@@ -416,6 +439,32 @@ func TestRaftNode_CompareTerm(t *testing.T) {
 
 	if state != _StepDown {
 		t.Errorf("Expected state change to _StepDown, but got: %d", state)
+	}
+}
+
+func TestRaftNode_createLogEntryArgs(t *testing.T) {
+	serverAddress := transport.NewAddress("localhost", 2344)
+
+	node := NewNode(serverAddress.String())
+	
+	node.log.logEntries = []keyValueReplicationEntry{
+		{term: 1, key: "key1", value: "value1"},
+		{term: 1, key: "key2", value: "value2"},
+		{term: 1, key: "key3", value: "value3"},
+		{term: 2, key: "key1", value: " append1"},
+		{term: 2, key: "key2", value: "replace2"},
+		{term: 2, key: "key3", value: ""},
+		{term: 3, key: "key1", value: "newvalue1"},
+		{term: 3, key: "key2", value: " append2"},
+		{term: 3, key: "key3", value: "value3"},
+	}
+
+	args := node.createLogEntryArgs(3, 5)
+
+	for i, entry := range args {
+		if entry.Term != node.log.logEntries[i+3].term {
+			t.Errorf("Expected term to be %d, but got: %d", node.log.logEntries[i+3].term, entry.Term)
+		}
 	}
 }
 

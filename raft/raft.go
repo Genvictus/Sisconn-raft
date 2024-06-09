@@ -419,7 +419,7 @@ func (r *RaftNode) requestVotes() {
 
 	// case: 1 node
 	if voteCount >= majority {
-		log.Println("Election won by ", r.address)
+		ServerLogger.Println("Election won by ", r.address)
 		r.initiateLeader()
 		return
 	}
