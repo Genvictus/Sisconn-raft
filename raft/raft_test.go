@@ -333,7 +333,24 @@ func TestRaftNode_requestVotes(t *testing.T) {
 		t.Errorf("Expected state to be _Leader, but got: %d", state)
 	}
 
+	// Test single node case
+	serverAddress7 := transport.NewAddress("localhost", 2017)
+	node7 := NewNode(serverAddress1.String())
+	node7.AddConnections([]string{
+		serverAddress7.String(),
+	})
+	go node7.runTest()
+
+	node7.currentState.Store(_Candidate)
+	
+	node7.requestVotes()
+
+	state = node7.currentState.Load()
+	if state != _Leader {
+		t.Errorf("Expected state to be _Leader, but got: %d", state)
+	}
 }
+
 func TestRaftNode_singleRequestVote(t *testing.T) {
 	serverAddress1 := transport.NewAddress("localhost", 2000)
 	serverAddress2 := transport.NewAddress("localhost", 2004)
