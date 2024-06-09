@@ -3,9 +3,11 @@ package raft
 import (
 	pb "Sisconn-raft/raft/raftpc"
 	"Sisconn-raft/raft/transport"
+	"context"
 	"fmt"
 	"log"
 	"net"
+	"reflect"
 	"testing"
 
 	"google.golang.org/grpc"
@@ -168,15 +170,100 @@ func TestRaftNode_countNodes(t *testing.T) {
 }
 
 func TestRaftNode_replicateEntry(t *testing.T) {
-	// TODO: Add test cases.
+	serverAddress1 := transport.NewAddress("localhost", 2341)
+	serverAddress2 := transport.NewAddress("localhost", 5435)
+
+	node := NewNode(serverAddress1.String())
+	node2 := NewNode(serverAddress2.String())
+	ListenServer(node, grpc.NewServer())
+	ListenServer(node2, grpc.NewServer())
+
+	node.AddConnections([]string{
+		serverAddress1.String(),
+		serverAddress2.String(),
+	})
+
+	node.log = *dummyReplicationHelperInt(2)
+	node.initiateLeader()
+	go node.runTest()
+	go node2.runTest()
+
+	ctx := context.Background()
+
+	// Replicate Entry
+	val := node.replicateEntry(ctx)
+
+	if val != true {
+		t.Errorf("Expected success, but got: %t", val)
+	}
 }
 
 func TestRaftNode_appendEntries(t *testing.T) {
-	// TODO: Add test cases.
+	serverAddress1 := transport.NewAddress("localhost", 5321)
+	serverAddress2 := transport.NewAddress("localhost", 6465)
+
+	node := NewNode(serverAddress1.String())
+	node2 := NewNode(serverAddress2.String())
+
+	ListenServer(node, grpc.NewServer())
+	ListenServer(node2, grpc.NewServer())
+
+	node.AddConnections([]string{
+		serverAddress1.String(),
+		serverAddress2.String(),
+	})
+
+	node.log = *dummyReplicationHelperInt(2)
+	node.initiateLeader()
+
+	go node.runTest()
+	go node2.runTest()
+
+	// Append Entries
+	commitedChan := make(chan bool, 1)
+	node.appendEntries(false, commitedChan)
+
+	val := <-commitedChan
+	if val != true {
+		t.Errorf("Expected success, but got: %t", val)
+	}
 }
 
 func TestRaftNode_singleAppendEntries(t *testing.T) {
-	// TODO: Add test cases.
+	serverAddress1 := transport.NewAddress("localhost", 3000)
+	serverAddress2 := transport.NewAddress("localhost", 3001)
+
+	node := NewNode(serverAddress1.String())
+	node2 := NewNode(serverAddress2.String())
+
+	ListenServer(node, grpc.NewServer())
+	ListenServer(node2, grpc.NewServer())
+
+	node.AddConnections([]string{
+		serverAddress1.String(),
+		serverAddress2.String(),
+	})
+
+	node.log = *dummyReplicationHelperInt(1)
+	node.initiateLeader()
+
+	go node.runTest()
+	go node2.runTest()
+
+	// Single Append Entries
+	val := node.singleAppendEntries(node2.address, false)
+	if val != true {
+		t.Errorf("Expected success, but got: %t", val)
+	}
+
+	// Heartbeat
+	_ = node.singleAppendEntries(node2.address, true)
+
+	if !reflect.DeepEqual(&node.log, &node2.log) {
+		log.Println("Node log ", &node.log)
+		log.Println("Node 2 log ", &node2.log)
+		t.Errorf("Expected log to be equal, but got: %v", &node2.log)
+	}
 }
 
 func TestRaftNode_requestVotes(t *testing.T) {
