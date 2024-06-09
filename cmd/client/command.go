@@ -196,7 +196,7 @@ func validateCommand(command string, args []string) error {
 
 func start() {
 	IsTransactionStart = true
-	log.Println("Start Transaction Batch")
+	fmt.Println("Start Transaction Batch")
 }
 
 func ping() string {
@@ -239,7 +239,6 @@ func ping() string {
 }
 
 func get(args []string) string {
-	// TODO
 	fmt.Println("Geting value", args[0])
 
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
@@ -270,7 +269,6 @@ func get(args []string) string {
 }
 
 func set(args []string) string {
-	// TODO
 	if IsTransactionStart {
 		transaction := Transaction{
 			Operation: "set",
@@ -312,7 +310,6 @@ func set(args []string) string {
 }
 
 func strln(args []string) string {
-	// TODO
 	fmt.Println("Strln", args[0])
 
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
@@ -344,7 +341,6 @@ func strln(args []string) string {
 }
 
 func del(args []string) string {
-	// TODO
 	if IsTransactionStart {
 		transaction := Transaction{
 			Operation: "del",
@@ -387,7 +383,6 @@ func del(args []string) string {
 }
 
 func Append(args []string) string {
-	// TODO
 	if IsTransactionStart {
 		transaction := Transaction{
 			Operation: "append",
@@ -464,7 +459,7 @@ func Commit() string {
 	// log.Println("buat ctx ga error", ctx)
 
 	// log.Println("batch exe: ", TransactionList)
-	log.Println(r.GetResponse())
+	fmt.Println(r.GetResponse())
 	if r.LeaderAddress != "" {
 		err = changeToLeaderAddress(r.LeaderAddress)
 		if err != nil {
