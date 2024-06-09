@@ -91,8 +91,9 @@ func LoadClientConfig() {
 
 // Raft Constants
 const (
-	_MembershipLog = iota
-	_DataLog
+	_ConfigReplication = iota
+	_StateReplication
+	_ReplicationEnd
 )
 
 const (

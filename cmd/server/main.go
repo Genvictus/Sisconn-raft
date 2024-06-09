@@ -58,7 +58,7 @@ func main() {
 	hostsarr := strings.Split(hosts, ",")
 
 	RaftNode = raft.NewNode(serverAddressStr)
-	RaftNode.AddConnections(hostsarr)
+	RaftNode.SetConnections(hostsarr)
 	go RaftNode.Run()
 	pb.RegisterRaftServiceServer(s, &raft.ServiceServer{Server: RaftNode})
 	pb.RegisterRaftServer(s, &raft.RaftServer{Server: RaftNode})

@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"maps"
 	"sync"
 )
 
@@ -207,4 +208,14 @@ func (k *keyValueReplication) get(key string) string {
 	val := k.replicatedState[key]
 	k.stateLock.RUnlock()
 	return val
+}
+
+func (k *keyValueReplication) getUnionState() map[string]string {
+	k.logLock.RLock()
+	k.stateLock.RLock()
+	union := maps.Clone(k.replicatedState)
+	maps.Copy(union, k.tempReplicatedState)
+	k.stateLock.RUnlock()
+	k.logLock.RUnlock()
+	return union
 }

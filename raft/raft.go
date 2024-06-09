@@ -32,17 +32,14 @@ type raftState struct {
 	currentTerm uint64
 	votedFor    string
 
-	log keyValueReplication
+	replications []keyValueReplication
 
 	// Volatile states, already in keyValueReplication
 	// commitIndex uint64
 	// lastApplied uint64
 
-	// Cluster Membership
-	membership keyValueReplication
-
 	// Leader States
-	followerIndex map[string]*followerIndex
+	followerIndex [](map[string]*followerIndex)
 }
 
 type RaftNode struct {
@@ -67,9 +64,14 @@ func NewNode(address string) *RaftNode {
 			// currentTerm: 0,
 			// votedFor: "",
 
-			log: newKeyValueReplication(),
+			replications: []keyValueReplication{
+				// _ConfigReplicaiton
+				newKeyValueReplication(),
+				// _StateReplication
+				newKeyValueReplication(),
+			},
 
-			membership: newKeyValueReplication(),
+			followerIndex: make([]map[string]*followerIndex, _ReplicationEnd),
 		},
 
 		conn:       map[string]*grpc.ClientConn{},
@@ -81,7 +83,7 @@ func NewNode(address string) *RaftNode {
 	return &new
 }
 
-func (r *RaftNode) AddConnections(targets []string) {
+func (r *RaftNode) SetConnections(targets []string) {
 	r.connLock.Lock()
 	defer r.connLock.Unlock()
 
@@ -105,24 +107,9 @@ func (r *RaftNode) AddConnections(targets []string) {
 			r.raftClient[address] = pb.NewRaftClient(conn)
 		}
 
-		r.membership.appendLog(r.currentTerm, address, _NodeActive)
+		r.replications[_ConfigReplication].appendLog(r.currentTerm, address, _NodeActive)
 	}
-	r.membership.commitEntries(r.membership.lastIndex)
-}
-
-func (r *RaftNode) RemoveConnections(targets []string) {
-	r.connLock.Lock()
-	defer r.connLock.Unlock()
-
-	for _, address := range targets {
-		// delete the grpc client
-		delete(r.raftClient, address)
-		// close the connection, then update the log
-		r.conn[address].Close()
-		delete(r.conn, address)
-		r.membership.appendLog(r.currentTerm, _DELETE_KEY, address)
-	}
-	r.membership.commitEntries(r.membership.lastIndex)
+	r.replications[_ConfigReplication].commitEntries(r.replications[_ConfigReplication].lastIndex)
 }
 
 func (r *RaftNode) Run() {
@@ -135,7 +122,7 @@ func (r *RaftNode) Run() {
 			select {
 			case <-timer.C:
 				// send heartbeat, synchronize log content at that
-				go r.appendEntries(true, nil)
+				go r.appendEntries(true, _StateReplication, nil)
 			case change := <-r.stateChange:
 				if !timer.Stop() {
 					<-timer.C
@@ -212,18 +199,19 @@ func (r *RaftNode) runTest() {
 // count number of nodes in the cluster
 // isQuorum returns the quorum for the nodes majority
 func (r *RaftNode) countNodes() (int, int) {
-	r.membership.logLock.RLock()
-	total := len(r.membership.replicatedState)
-	r.membership.logLock.RUnlock()
+	membership := &r.replications[_ConfigReplication]
+	membership.logLock.RLock()
+	total := len(membership.replicatedState)
+	membership.logLock.RUnlock()
 	quorum := total/2 + 1
 	return total, quorum
 }
 
-func (r *RaftNode) replicateEntry(ctx context.Context) bool {
+func (r *RaftNode) replicateEntry(ctx context.Context, replicationType uint64) bool {
 	// r.stateChange <- _NewAppendEntry
 	wait := func() chan bool {
 		committedCh := make(chan bool)
-		go r.appendEntries(false, committedCh)
+		go r.appendEntries(false, replicationType, committedCh)
 		return committedCh
 	}
 
@@ -236,29 +224,30 @@ func (r *RaftNode) replicateEntry(ctx context.Context) bool {
 	}
 }
 
-func (r *RaftNode) appendEntries(isHeartbeat bool, committedCh chan<- bool) {
+func (r *RaftNode) appendEntries(isHeartbeat bool, replicationType uint64, committedCh chan<- bool) {
 	// refresh heartbeat timer, appendEntries can only done by leaders
 	r.stateChange <- _NewAppendEntry
 
-	r.log.indexLock.RLock()
-	lastIndex := r.log.lastIndex
-	r.log.indexLock.RUnlock()
+	log := &r.replications[replicationType]
 
-	r.membership.stateLock.RLock()
+	log.indexLock.RLock()
+	lastIndex := log.lastIndex
+	log.indexLock.RUnlock()
+
+	membership := r.replications[_ConfigReplication].getUnionState()
 	var completedCh = make(chan bool)
-	for address := range r.membership.replicatedState {
+	for address := range membership {
 		if address != r.address {
 			go func() {
-				completedCh <- r.singleAppendEntries(address, isHeartbeat)
+				completedCh <- r.singleAppendEntries(address, replicationType, isHeartbeat)
 			}()
 		}
 	}
-	r.membership.stateLock.RUnlock()
 
 	totalNodes, majority := r.countNodes()
 	// if single server, just commit
 	if totalNodes == 1 {
-		r.log.commitEntries(lastIndex)
+		log.commitEntries(lastIndex)
 		committedCh <- true
 		return
 	}
@@ -276,7 +265,7 @@ func (r *RaftNode) appendEntries(isHeartbeat bool, committedCh chan<- bool) {
 			if successCount == (majority - 1) {
 				// if majority has replicated, notify replication's committed
 				ServerLogger.Println("Successfully committed")
-				r.log.commitEntries(lastIndex)
+				log.commitEntries(lastIndex)
 				committedCh <- true
 				signaled = true
 			}
@@ -288,27 +277,30 @@ func (r *RaftNode) appendEntries(isHeartbeat bool, committedCh chan<- bool) {
 	}
 }
 
-func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) bool {
+func (r *RaftNode) singleAppendEntries(address string, replicationType uint64, isHeartbeat bool) bool {
 	// check for ongoing appendEntries for target node
 	// if it is for heartbeat, try appendentries
+	followerIndex := r.followerIndex[replicationType]
+	log := &r.replications[replicationType]
+
 	if isHeartbeat {
 		// if failed to acquire lock, there exists an appendEntries RPCs
 		// ongoing for this follower, heartbeat is OK
-		if !r.followerIndex[address].indexLock.TryLock() {
+		if !followerIndex[address].indexLock.TryLock() {
 			return true
 		}
 	} else {
-		r.followerIndex[address].indexLock.Lock()
+		followerIndex[address].indexLock.Lock()
 	}
-	defer r.followerIndex[address].indexLock.Unlock()
+	defer followerIndex[address].indexLock.Unlock()
 
 	targetClient := r.raftClient[address]
 	var appendSuccessful = false
 
 	// get server's last log index
-	r.log.indexLock.RLock()
-	lastIndex := r.log.lastIndex
-	r.log.indexLock.RUnlock()
+	log.indexLock.RLock()
+	lastIndex := log.lastIndex
+	log.indexLock.RUnlock()
 
 	// maybe add counter to limit retries
 	for !appendSuccessful {
@@ -319,30 +311,30 @@ func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) bool {
 		}
 
 		// get follower's log (supposedly) last index and term
-		var prevLogIndex = r.followerIndex[address].nextIndex - 1
-		var prevLogTerm = r.log.getEntries(prevLogIndex, prevLogIndex)[0].term
+		var prevLogIndex = followerIndex[address].nextIndex - 1
+		var prevLogTerm = log.getEntries(prevLogIndex, prevLogIndex)[0].term
 		// prepare log entries
 		var logEntries []*pb.LogEntry
 		if isHeartbeat {
 			logEntries = make([]*pb.LogEntry, 0)
 		} else {
-			logEntries = r.createLogEntryArgs(prevLogIndex+1, lastIndex)
+			logEntries = r.createLogEntryArgs(prevLogIndex+1, lastIndex, replicationType)
 		}
 
 		// get leader's last commit index
-		r.log.indexLock.RLock()
-		leaderCommit := r.log.commitIndex
-		r.log.indexLock.RUnlock()
+		log.indexLock.RLock()
+		leaderCommit := log.commitIndex
+		log.indexLock.RUnlock()
 
 		// prepare arguments
 		args := pb.AppendEntriesArg{
-			Term:         r.currentTerm,
-			LeaderId:     r.address,
-			PrevLogIndex: prevLogIndex,
-			PrevLogTerm:  prevLogTerm,
-			LogEntries:   logEntries,
-			LeaderCommit: leaderCommit,
-			LogType:      _DataLog,
+			Term:            r.currentTerm,
+			LeaderId:        r.address,
+			PrevLogIndex:    prevLogIndex,
+			PrevLogTerm:     prevLogTerm,
+			LogEntries:      logEntries,
+			LeaderCommit:    leaderCommit,
+			ReplicationType: replicationType,
 		}
 
 		// create RPC
@@ -362,11 +354,11 @@ func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) bool {
 		// check if append is successful
 		if !result.Success {
 			// decrement the index for next appendEntries()
-			r.followerIndex[address].nextIndex--
+			followerIndex[address].nextIndex--
 		} else {
 			appendSuccessful = true
 			// update the index
-			r.followerIndex[address].nextIndex = lastIndex + 1
+			followerIndex[address].nextIndex = lastIndex + 1
 		}
 
 		// if call is for heartbeat
@@ -385,11 +377,17 @@ func (r *RaftNode) requestVotes() {
 	r.votedFor = r.address
 	r.raftLock.Unlock()
 
+	lastIndex := make([]uint64, _ReplicationEnd)
+	lastTerm := make([]uint64, _ReplicationEnd)
 	// get last log index and term
-	r.log.indexLock.RLock()
-	lastIndex := r.log.lastIndex
-	lastTerm := r.log.getEntries(lastIndex, lastIndex)[0].term
-	r.log.indexLock.RUnlock()
+	for i := 0; i < _ReplicationEnd; i++ {
+		log := &r.replications[i]
+
+		log.indexLock.RLock()
+		lastIndex[i] = log.lastIndex
+		lastTerm[i] = log.getEntries(lastIndex[i], lastIndex[i])[0].term
+		log.indexLock.RUnlock()
+	}
 
 	// count votes
 	voteCount := 1
@@ -421,14 +419,12 @@ func (r *RaftNode) requestVotes() {
 	r.currentState.Store(_Follower)
 }
 
-func (r *RaftNode) singleRequestVote(address string, lastLogIndex uint64, lastLogTerm uint64) bool {
+func (r *RaftNode) singleRequestVote(address string, lastLogIndex []uint64, lastLogTerm []uint64) bool {
 	targetClient := r.raftClient[address]
-	// map?
-	lastLogIndexMap := map[uint32]uint64{0: lastLogIndex}
 	args := pb.RequestVoteArg{
 		Term:         r.currentTerm,
 		CandidateId:  r.address,
-		LastLogIndex: lastLogIndexMap,
+		LastLogIndex: lastLogIndex,
 		LastLogTerm:  lastLogTerm,
 	}
 
@@ -457,25 +453,27 @@ func (r *RaftNode) initiateLeader() {
 	// set current state as leader
 	r.currentState.Store(_Leader)
 
-	// get next log index for initialization
-	r.log.indexLock.RLock()
-	nextIndex := r.log.lastIndex + 1
-	r.log.indexLock.RUnlock()
+	membership := r.replications[_ConfigReplication].getUnionState()
+	for i := 0; i < _ReplicationEnd; i++ {
+		log := &r.replications[i]
+		// get next log index for initialization
+		log.indexLock.RLock()
+		nextIndex := log.lastIndex + 1
+		log.indexLock.RUnlock()
 
-	// initialize indexes to track followers
-	r.followerIndex = map[string]*followerIndex{}
-	// initiate indexes after each election
-	r.membership.stateLock.RLock()
-	for address := range r.membership.replicatedState {
-		r.followerIndex[address] = &followerIndex{
-			nextIndex:  nextIndex,
-			matchIndex: 0,
+		// initialize indexes to track followers
+		r.followerIndex[i] = map[string]*followerIndex{}
+		// initiate indexes after each election
+		for address := range membership {
+			(r.followerIndex[i])[address] = &followerIndex{
+				nextIndex:  nextIndex,
+				matchIndex: 0,
+			}
 		}
 	}
-	r.membership.stateLock.RUnlock()
 
 	// send initial heartbeat
-	go r.appendEntries(true, nil)
+	go r.appendEntries(true, _StateReplication, nil)
 }
 
 // handles RPC request or response's term
@@ -498,8 +496,10 @@ func (r *RaftNode) compareTerm(receivedTerm uint64) {
 }
 
 // additional funcs to help with implementation
-func (r *RaftNode) createLogEntryArgs(startIndex uint64, lastIndex uint64) []*pb.LogEntry {
-	logEntries := r.log.getEntries(startIndex, lastIndex)
+func (r *RaftNode) createLogEntryArgs(startIndex uint64, lastIndex uint64, replicationType uint64) []*pb.LogEntry {
+	log := r.replications[replicationType]
+
+	logEntries := log.getEntries(startIndex, lastIndex)
 	var argEntries = make([]*pb.LogEntry, len(logEntries))
 
 	for index, entry := range logEntries {

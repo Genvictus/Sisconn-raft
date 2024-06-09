@@ -19,7 +19,7 @@ message AppendEntriesArg {
 
     uint64 leaderCommit = 6;
 
-    uint64 logType = 7;
+    uint64 replicationType = 7;
 }
 
 message LogEntry {
@@ -37,8 +37,8 @@ message RequestVoteArg {
     uint64 term = 1;
     string candidateId = 2;
     // last log index for each logs
-    map<uint32, uint64> lastLogIndex = 3;
-    uint64 lastLogTerm = 4;
+    repeated uint64 lastLogIndex = 3;
+    repeated uint64 lastLogTerm = 4;
 }
 
 message VoteResult {

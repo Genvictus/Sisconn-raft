@@ -41,9 +41,10 @@ func (s *ServiceServer) Get(ctx context.Context, in *pb.KeyedRequest) (*pb.Value
 		}, nil
 	}
 	ServerLogger.Println("get key:", in.Key)
-	ServerLogger.Println(s.Server.log.replicatedState)
+	log := s.Server.replications[_StateReplication]
+	ServerLogger.Println(log.replicatedState)
 	return &pb.ValueResponse{
-		Value:         s.Server.log.get(in.Key),
+		Value:         log.get(in.Key),
 		LeaderAddress: "",
 	}, nil
 }
@@ -56,12 +57,12 @@ func (s *ServiceServer) Set(ctx context.Context, in *pb.KeyValuedRequest) (*pb.M
 		}, nil
 	}
 	ServerLogger.Println("set key:", in.Key, "with value:", in.Value)
-	s.Server.log.appendLog(s.Server.currentTerm, in.Key, in.Value)
+	s.Server.replications[_StateReplication].appendLog(s.Server.currentTerm, in.Key, in.Value)
 	// Replicate Entries to commit
 	commitCtx, cancel := context.WithTimeout(context.Background(), REPLICATION_TIMEOUT)
 	defer cancel()
 	var response string
-	if s.Server.replicateEntry(commitCtx) {
+	if s.Server.replicateEntry(commitCtx, _StateReplication) {
 		response = OkResponse
 	} else {
 		response = PendingResponse
@@ -81,7 +82,7 @@ func (s *ServiceServer) Strln(ctx context.Context, in *pb.KeyedRequest) (*pb.Val
 	}
 	ServerLogger.Println("get strln for key:", in.Key)
 	return &pb.ValueResponse{
-		Value:         strconv.Itoa(len(s.Server.log.get(in.Key))),
+		Value:         strconv.Itoa(len(s.Server.replications[_StateReplication].get(in.Key))),
 		LeaderAddress: "",
 	}, nil
 }
@@ -94,12 +95,13 @@ func (s *ServiceServer) Del(ctx context.Context, in *pb.KeyedRequest) (*pb.Value
 		}, nil
 	}
 	ServerLogger.Println("del key:", in.Key)
-	val := s.Server.log.get(in.Key)
-	s.Server.log.appendLog(s.Server.currentTerm, in.Key, _DELETE_KEY)
+	log := &s.Server.replications[_StateReplication]
+	val := log.get(in.Key)
+	log.appendLog(s.Server.currentTerm, in.Key, _DELETE_KEY)
 	// Replicate Entries to commit
 	commitCtx, cancel := context.WithTimeout(context.Background(), REPLICATION_TIMEOUT)
 	defer cancel()
-	s.Server.replicateEntry(commitCtx)
+	s.Server.replicateEntry(commitCtx, _StateReplication)
 	return &pb.ValueResponse{
 		Value:         val,
 		LeaderAddress: "",
@@ -114,12 +116,13 @@ func (s *ServiceServer) Append(ctx context.Context, in *pb.KeyValuedRequest) (*p
 		}, nil
 	}
 	ServerLogger.Println("append key:", in.Key, "with", in.Value)
-	s.Server.log.appendLog(s.Server.currentTerm, in.Key, s.Server.log.tempReplicatedState[in.Key]+in.Value)
+	log := &s.Server.replications[_StateReplication]
+	log.appendLog(s.Server.currentTerm, in.Key, log.tempReplicatedState[in.Key]+in.Value)
 	// Replicate Entries to commit
 	commitCtx, cancel := context.WithTimeout(context.Background(), REPLICATION_TIMEOUT)
 	defer cancel()
 	var response string
-	if s.Server.replicateEntry(commitCtx) {
+	if s.Server.replicateEntry(commitCtx, _StateReplication) {
 		response = OkResponse
 	} else {
 		response = PendingResponse
@@ -139,7 +142,7 @@ func (s *ServiceServer) ReqLog(ctx context.Context, in *pb.LogRequest) (*pb.LogR
 	}
 	ServerLogger.Println("request log")
 	var logEntries []*pb.LogEntry
-	for _, log := range s.Server.log.logEntries {
+	for _, log := range s.Server.replications[_StateReplication].logEntries {
 		logEntries = append(logEntries, &pb.LogEntry{Term: log.term, Key: log.key, Value: log.value})
 	}
 	return &pb.LogResponse{
@@ -161,12 +164,12 @@ func (s *ServiceServer) Commit(ctx context.Context, in *pb.CommitRequest) (*pb.M
 		ServerLogger.Println(entry.Type, entry.Key, entry.Value)
 		entries = append(entries, TransactionEntry{command: entry.Type, key: entry.Key, value: entry.Value})
 	}
-	s.Server.log.appendTransaction(s.Server.currentTerm, entries)
+	s.Server.replications[_StateReplication].appendTransaction(s.Server.currentTerm, entries)
 	// Replicate Entries to commit
 	commitCtx, cancel := context.WithTimeout(context.Background(), REPLICATION_TIMEOUT)
 	defer cancel()
 	var response string
-	if s.Server.replicateEntry(commitCtx) {
+	if s.Server.replicateEntry(commitCtx, _StateReplication) {
 		response = OkResponse
 	} else {
 		response = PendingResponse
@@ -178,42 +181,11 @@ func (s *ServiceServer) Commit(ctx context.Context, in *pb.CommitRequest) (*pb.M
 }
 
 func (s *ServiceServer) AddNode(ctx context.Context, in *pb.KeyValuedRequest) (*pb.MessageResponse, error) {
-	if s.Server.currentState.Load() != _Leader {
-		return &pb.MessageResponse{
-			Response:      NotLeaderResponse + s.Server.leaderAddress,
-			LeaderAddress: s.Server.leaderAddress,
-		}, nil
-	}
-	ServerLogger.Println("Adding node " + in.GetKey())
-	s.Server.AddConnections([]string{
-		in.GetKey(),
-	})
-	// s.Server.membership.appendLog(s.Server.currentTerm, in.GetKey(), _NodeInactive)
-
-	response := "Internal Server Error"
-	return &pb.MessageResponse{
-		Response:      response,
-		LeaderAddress: "",
-	}, nil
+	return nil, nil
 }
 
 func (s *ServiceServer) RemoveNode(ctx context.Context, in *pb.KeyedRequest) (*pb.MessageResponse, error) {
-	if s.Server.currentState.Load() != _Leader {
-		return &pb.MessageResponse{
-			Response:      NotLeaderResponse + s.Server.leaderAddress,
-			LeaderAddress: s.Server.leaderAddress,
-		}, nil
-	}
-	ServerLogger.Println("Removing node " + in.Key)
-	s.Server.RemoveConnections([]string{
-		in.GetKey(),
-	})
-	// s.Server.raftState.membership.appendLog(s.Server.currentTerm, _DELETE_KEY, in.Key)
-
-	return &pb.MessageResponse{
-		Response:      "OK",
-		LeaderAddress: "",
-	}, nil
+	return nil, nil
 }
 
 /*
@@ -243,23 +215,28 @@ func (s *RaftServer) RequestVote(ctx context.Context, in *pb.RequestVoteArg) (*p
 		s.Server.compareTerm(in.Term)
 	}
 
+	s.Server.stateChange <- _RefreshFollower
 	if s.Server.votedFor == "" || s.Server.votedFor == in.CandidateId {
 
-		followerLog := &s.Server.log
+		grantVote := true
+		for i := 0; i < _ReplicationEnd; i++ {
+			log := &s.Server.replications[i]
 
-		if followerLog.lastIndex == 0 {
-			s.Server.votedFor = in.CandidateId
-			s.Server.stateChange <- _RefreshFollower
-			result.VoteGranted = true
-			return &result, nil
+			log.indexLock.RLock()
+			lastIndex := log.lastIndex
+			log.indexLock.RUnlock()
+
+			checkIdx := lastIndex <= in.LastLogIndex[i]
+			checkTerm := log.getEntries(lastIndex, lastIndex)[0].term <= in.LastLogTerm[i]
+
+			if !(checkIdx && checkTerm) {
+				grantVote = false
+				break
+			}
 		}
 
-		checkTerm := followerLog.logEntries[followerLog.lastIndex].term <= in.LastLogTerm
-		checkIdx := followerLog.lastIndex <= in.LastLogIndex[0]
-
-		if checkTerm && checkIdx {
+		if grantVote {
 			s.Server.votedFor = in.CandidateId
-			s.Server.stateChange <- _RefreshFollower
 			result.VoteGranted = true
 			return &result, nil
 		}
@@ -292,19 +269,22 @@ func (s *RaftServer) AppendEntries(ctx context.Context, in *pb.AppendEntriesArg)
 		s.Server.raftLock.Unlock()
 	}
 
+	// get log type
+	log := &s.Server.replications[in.GetReplicationType()]
+
 	// 2. Reply false if log doesn’t contain an entry at prevLogIndex
 	// whose term matches prevLogTerm (§5.3)
-	s.Server.log.indexLock.RLock()
-	lastIndex := s.Server.log.lastIndex
-	commitIndex := s.Server.log.commitIndex
-	s.Server.log.indexLock.RUnlock()
+	log.indexLock.RLock()
+	lastIndex := log.lastIndex
+	commitIndex := log.commitIndex
+	log.indexLock.RUnlock()
 	if lastIndex < in.PrevLogIndex {
 		// if index is out of bound (newer entries)
 		ServerLogger.Println("Request failed: ")
 		res.Success = false
 		return &res, nil
 	}
-	entryTerm := s.Server.log.getEntries(in.PrevLogIndex, in.PrevLogIndex)[0].term
+	entryTerm := log.getEntries(in.PrevLogIndex, in.PrevLogIndex)[0].term
 	if entryTerm != in.PrevLogTerm {
 		res.Success = false
 		return &res, nil
@@ -323,14 +303,14 @@ func (s *RaftServer) AppendEntries(ctx context.Context, in *pb.AppendEntriesArg)
 		}
 	}
 	// start with goroutine? is this long running?
-	s.Server.log.replaceLog(in.PrevLogIndex+1, logEntries)
+	log.replaceLog(in.PrevLogIndex+1, logEntries)
 
 	// 5. If leaderCommit > commitIndex, set commitIndex =
 	// min(leaderCommit, index of last new entry)
 	if in.LeaderCommit > commitIndex {
 		// should be long running, especially if this deals with persistence
 		// i.e. writing to stable storage
-		go s.Server.log.commitEntries(min(in.LeaderCommit, lastIndex))
+		go log.commitEntries(min(in.LeaderCommit, lastIndex))
 	}
 
 	res.Success = true
