@@ -3,7 +3,6 @@ package raft
 import (
 	pb "Sisconn-raft/raft/raftpc"
 	"context"
-	"log"
 	"strconv"
 )
 
@@ -17,8 +16,8 @@ type ServiceServer struct {
 }
 
 func (s *ServiceServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.MessageResponse, error) {
-	log.Println(s.Server.address)
-	log.Println(s.Server.leaderAddress)
+	ServerLogger.Println(s.Server.address)
+	ServerLogger.Println(s.Server.leaderAddress)
 	if s.Server.currentState.Load() != _Leader {
 		return &pb.MessageResponse{
 			Response:      NotLeaderResponse + s.Server.leaderAddress,
@@ -27,7 +26,7 @@ func (s *ServiceServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.Messa
 	}
 	// maybe add a dedicated logger
 	// TODO: get sender's IP to be outputted to log
-	log.Println("ping received")
+	ServerLogger.Println("ping received")
 	return &pb.MessageResponse{
 		Response:      OkResponse,
 		LeaderAddress: "",
@@ -41,8 +40,8 @@ func (s *ServiceServer) Get(ctx context.Context, in *pb.KeyedRequest) (*pb.Value
 			LeaderAddress: s.Server.leaderAddress,
 		}, nil
 	}
-	log.Println("get key:", in.Key)
-	log.Println(s.Server.log.replicatedState)
+	ServerLogger.Println("get key:", in.Key)
+	ServerLogger.Println(s.Server.log.replicatedState)
 	return &pb.ValueResponse{
 		Value:         s.Server.log.get(in.Key),
 		LeaderAddress: "",
@@ -56,7 +55,7 @@ func (s *ServiceServer) Set(ctx context.Context, in *pb.KeyValuedRequest) (*pb.M
 			LeaderAddress: s.Server.leaderAddress,
 		}, nil
 	}
-	log.Println("set key:", in.Key, "with value:", in.Value)
+	ServerLogger.Println("set key:", in.Key, "with value:", in.Value)
 	s.Server.log.appendLog(s.Server.currentTerm, in.Key, in.Value)
 	// Replicate Entries to commit
 	commitCtx, cancel := context.WithTimeout(context.Background(), REPLICATION_TIMEOUT)
@@ -80,7 +79,7 @@ func (s *ServiceServer) Strln(ctx context.Context, in *pb.KeyedRequest) (*pb.Val
 			LeaderAddress: s.Server.leaderAddress,
 		}, nil
 	}
-	log.Println("get strln for key:", in.Key)
+	ServerLogger.Println("get strln for key:", in.Key)
 	return &pb.ValueResponse{
 		Value:         strconv.Itoa(len(s.Server.log.get(in.Key))),
 		LeaderAddress: "",
@@ -94,7 +93,7 @@ func (s *ServiceServer) Del(ctx context.Context, in *pb.KeyedRequest) (*pb.Value
 			LeaderAddress: s.Server.leaderAddress,
 		}, nil
 	}
-	log.Println("del key:", in.Key)
+	ServerLogger.Println("del key:", in.Key)
 	val := s.Server.log.get(in.Key)
 	s.Server.log.appendLog(s.Server.currentTerm, in.Key, _DELETE_KEY)
 	// Replicate Entries to commit
@@ -114,7 +113,7 @@ func (s *ServiceServer) Append(ctx context.Context, in *pb.KeyValuedRequest) (*p
 			LeaderAddress: s.Server.leaderAddress,
 		}, nil
 	}
-	log.Println("append key:", in.Key, "with", in.Value)
+	ServerLogger.Println("append key:", in.Key, "with", in.Value)
 	s.Server.log.appendLog(s.Server.currentTerm, in.Key, s.Server.log.tempReplicatedState[in.Key]+in.Value)
 	// Replicate Entries to commit
 	commitCtx, cancel := context.WithTimeout(context.Background(), REPLICATION_TIMEOUT)
@@ -138,7 +137,7 @@ func (s *ServiceServer) ReqLog(ctx context.Context, in *pb.LogRequest) (*pb.LogR
 			LeaderAddress: s.Server.leaderAddress,
 		}, nil
 	}
-	log.Println("request log")
+	ServerLogger.Println("request log")
 	var logEntries []*pb.LogEntry
 	for _, log := range s.Server.log.logEntries {
 		logEntries = append(logEntries, &pb.LogEntry{Term: log.term, Key: log.key, Value: log.value})
@@ -156,10 +155,10 @@ func (s *ServiceServer) Commit(ctx context.Context, in *pb.CommitRequest) (*pb.M
 			LeaderAddress: s.Server.leaderAddress,
 		}, nil
 	}
-	log.Println("commit")
+	ServerLogger.Println("commit")
 	var entries []TransactionEntry
 	for _, entry := range in.CommitEntries {
-		log.Println(entry.Type, entry.Key, entry.Value)
+		ServerLogger.Println(entry.Type, entry.Key, entry.Value)
 		entries = append(entries, TransactionEntry{command: entry.Type, key: entry.Key, value: entry.Value})
 	}
 	s.Server.log.appendTransaction(s.Server.currentTerm, entries)
@@ -185,7 +184,7 @@ func (s *ServiceServer) AddNode(ctx context.Context, in *pb.KeyValuedRequest) (*
 			LeaderAddress: s.Server.leaderAddress,
 		}, nil
 	}
-	log.Println("Adding node " + in.GetKey())
+	ServerLogger.Println("Adding node " + in.GetKey())
 	s.Server.AddConnections([]string{
 		in.GetKey(),
 	})
@@ -205,7 +204,7 @@ func (s *ServiceServer) RemoveNode(ctx context.Context, in *pb.KeyedRequest) (*p
 			LeaderAddress: s.Server.leaderAddress,
 		}, nil
 	}
-	log.Println("Removing node " + in.Key)
+	ServerLogger.Println("Removing node " + in.Key)
 	s.Server.RemoveConnections([]string{
 		in.GetKey(),
 	})
@@ -227,14 +226,11 @@ type RaftServer struct {
 }
 
 func (s *RaftServer) RequestVote(ctx context.Context, in *pb.RequestVoteArg) (*pb.VoteResult, error) {
-	log.Println("RequestVote")
-	log.Println("Current voted for:", s.Server.votedFor)
+	ServerLogger.Println("RequestVote")
+	ServerLogger.Println("Current voted for:", s.Server.votedFor)
 	defer func() {
-		log.Println("Final voted for:", s.Server.votedFor)
+		ServerLogger.Println("Final voted for:", s.Server.votedFor)
 	}()
-
-	// fmt.Printf("RequestVote: %v\n", in.Term)
-	// fmt.Printf("Caller: %v\n", callerNode.address)
 
 	result := pb.VoteResult{
 		Term: s.Server.currentTerm,
@@ -281,7 +277,7 @@ func (s *RaftServer) AppendEntries(ctx context.Context, in *pb.AppendEntriesArg)
 	// 1. Reply false if term < currentTerm (§5.1)
 	// implies requesting node is outdated
 	if in.Term < currentTerm {
-		log.Println("Request failed: outdated term")
+		ServerLogger.Println("Request failed: outdated term")
 		res.Success = false
 		return &res, nil
 	} else {
@@ -304,7 +300,7 @@ func (s *RaftServer) AppendEntries(ctx context.Context, in *pb.AppendEntriesArg)
 	s.Server.log.indexLock.RUnlock()
 	if lastIndex < in.PrevLogIndex {
 		// if index is out of bound (newer entries)
-		log.Println("Request failed: ")
+		ServerLogger.Println("Request failed: ")
 		res.Success = false
 		return &res, nil
 	}

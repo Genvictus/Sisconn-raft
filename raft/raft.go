@@ -3,8 +3,6 @@ package raft
 import (
 	pb "Sisconn-raft/raft/raftpc"
 	"context"
-	"fmt"
-	"log"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -96,7 +94,7 @@ func (r *RaftNode) AddConnections(targets []string) {
 
 			// if any fails, stop the process
 			if err != nil {
-				fmt.Printf("Add connection %s fails, error: %v\n", address, err.Error())
+				ServerLogger.Printf("Add connection %s fails, error: %v\n", address, err.Error())
 				return
 			}
 
@@ -128,8 +126,8 @@ func (r *RaftNode) RemoveConnections(targets []string) {
 
 func (r *RaftNode) Run() {
 	for {
-		log.Println("Current state:", r.currentState.Load())
-		log.Println("Current voted for:", r.votedFor)
+		ServerLogger.Println("Current state:", r.currentState.Load())
+		ServerLogger.Println("Current voted for:", r.votedFor)
 		switch r.currentState.Load() {
 		case _Leader:
 			timer := time.NewTimer(HEARTBEAT_INTERVAL)
@@ -273,10 +271,10 @@ func (r *RaftNode) appendEntries(isHeartbeat bool, committedCh chan<- bool) {
 		// if append entries successful (logs replicated to other nodes)
 		if replicated {
 			successCount++
-			log.Printf("%d successful replication\n", successCount)
+			ServerLogger.Printf("%d successful replication\n", successCount)
 			if successCount == (majority - 1) {
 				// if majority has replicated, notify replication's committed
-				log.Println("Successfully committed")
+				ServerLogger.Println("Successfully committed")
 				r.log.commitEntries(lastIndex)
 				committedCh <- true
 				signaled = true
@@ -353,7 +351,7 @@ func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) bool {
 
 		// if error, stop
 		if err != nil {
-			log.Println(err.Error())
+			ServerLogger.Println(err.Error())
 			break
 		}
 
@@ -412,13 +410,13 @@ func (r *RaftNode) requestVotes() {
 		}
 
 		if voteCount >= majority {
-			log.Println("Election won by ", r.address)
+			ServerLogger.Println("Election won by ", r.address)
 			r.initiateLeader()
 			return
 		}
 	}
 	// majority not reached, revert to follower
-	log.Println("I lose the election with " + strconv.Itoa(voteCount) + " votes")
+	ServerLogger.Println("I lose the election with " + strconv.Itoa(voteCount) + " votes")
 	r.currentState.Store(_Follower)
 }
 
@@ -433,7 +431,7 @@ func (r *RaftNode) singleRequestVote(address string, lastLogIndex uint64, lastLo
 		LastLogTerm:  lastLogTerm,
 	}
 
-	log.Println("Requesting vote from ", address)
+	ServerLogger.Println("Requesting vote from ", address)
 
 	// RPC
 	ctx, cancel := context.WithTimeout(context.Background(), SERVER_RPC_TIMEOUT)
@@ -441,12 +439,12 @@ func (r *RaftNode) singleRequestVote(address string, lastLogIndex uint64, lastLo
 	defer cancel()
 
 	if err != nil {
-		log.Println("Error requesting vote from ", address)
-		log.Println(err.Error())
+		ServerLogger.Println("Error requesting vote from ", address)
+		ServerLogger.Println(err.Error())
 		return false
 	}
 
-	log.Println("Vote result ", result)
+	ServerLogger.Println("Vote result ", result)
 	// if follower term is newer immediately step down
 	r.compareTerm(result.Term)
 
