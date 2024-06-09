@@ -122,7 +122,12 @@ func handleRequestLog(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetAllNode(w http.ResponseWriter, r *http.Request) {
-	message, _ := json.Marshal(GetAllNode([]string{}))
+	nodeResponses, err := GetAllNode([]string{})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	message, _ := json.Marshal(nodeResponses)
 
 	w.WriteHeader(http.StatusOK)
 	w.Write(message)

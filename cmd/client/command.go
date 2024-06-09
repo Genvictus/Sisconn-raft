@@ -29,6 +29,11 @@ type Transaction struct {
 	Value     string
 }
 
+type NodeResponse struct {
+	Address string
+	State   string
+}
+
 var TransactionList []Transaction
 
 func setClientLogger(serverAddress *t.Address) {
@@ -599,42 +604,43 @@ func requestLog(client pb.RaftServiceClient) string {
 	return formattedLog
 }
 
-func GetAllNode(args []string) string {
+func GetAllNode(args []string) ([]NodeResponse, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), r.CLIENT_TIMEOUT)
 	defer cancel()
 
 	r, err := serviceClient.ReqClusterInfo(ctx, &pb.ClusterInfoRequest{})
 	if err != nil {
 		ClientLogger.Println(err)
-		return err.Error()
+		return nil, err
 	}
 
 	if r.LeaderAddress != "" {
 		err = changeToLeaderAddress(r.LeaderAddress)
 		if err != nil {
 			ClientLogger.Println(err)
-			return err.Error()
+			return nil, err
 		}
 
 		r, err = serviceClient.ReqClusterInfo(ctx, &pb.ClusterInfoRequest{})
 		if err != nil {
 			ClientLogger.Println(err)
-			return err.Error()
+			return nil, err
 		}
 
-		for _, nodeInfo := range r.NodeInfo {
-			fmt.Println(nodeInfo.Address)
-		}
+		// for _, nodeInfo := range r.NodeInfo {
+		// 	fmt.Println(nodeInfo.Address)
+		// }
 	}
 
 	var buffer bytes.Buffer
 	buffer.WriteString("Node:\n")
-	fmt.Println(len(r.NodeInfo))
+	// fmt.Println(len(r.NodeInfo))
+	var responses []NodeResponse
 	for _, node := range r.NodeInfo {
 		err = changeToLeaderAddress(node.Address)
 		if err != nil {
 			ClientLogger.Println(err)
-			return err.Error()
+			return nil, err
 		}
 
 		stateResponse, _ := serviceClient.NodeState(ctx, &pb.StateRequest{})
@@ -646,11 +652,16 @@ func GetAllNode(args []string) string {
 			state = stateResponse.State
 		}
 		buffer.WriteString(fmt.Sprintf("%s: %s\n", node.Address, state))
+
+		responses = append(responses, NodeResponse{
+			Address: node.Address,
+			State:   state,
+		})
 	}
 	formattedNode := buffer.String()
 	fmt.Println(formattedNode)
 
-	return formattedNode
+	return responses, nil
 }
 
 func changeServer(args []string) {
