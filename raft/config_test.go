@@ -1,7 +1,6 @@
 package raft
 
 import (
-	"io"
 	"os"
 	"strconv"
 	"testing"
@@ -180,9 +179,7 @@ func TestLoadRaftConfig(t *testing.T) {
 
 func TestPrintConfig(t *testing.T) {
     // Capture the output
-    rescueStdout := os.Stdout
-    r, w, _ := os.Pipe()
-    os.Stdout = w
+	closeBuf := redirectStdout()
 
     SetClientTimeout(100 * time.Millisecond)
     SetServerRPCTimeout(200 * time.Millisecond)
@@ -190,9 +187,7 @@ func TestPrintConfig(t *testing.T) {
 
 	PrintConfig()
     
-    w.Close()
-    out, _ := io.ReadAll(r)
-    os.Stdout = rescueStdout
+	out := closeBuf()
 
     string_out := string(out)
 

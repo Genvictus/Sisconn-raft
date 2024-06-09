@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -39,5 +40,25 @@ func TestRandMs(t *testing.T) {
 				t.Errorf("Expected duration between %d and %d, got %d", tt.minDuration, tt.maxDuration, randDuration)
 			}
 		})
+	}
+}
+
+func TestRedirectStdout(t *testing.T) {
+	closeBuf := redirectStdout()
+
+	fmt.Print("Hello, World!")
+
+	out := closeBuf()
+
+	string_out := string(out)
+
+	if string_out != "Hello, World!" {
+		t.Errorf("Expected output: %s, got %s", "Hello, World!", string_out)
+	}
+
+	fmt.Println("Test passed!")
+	
+	if string_out != "Hello, World!" {
+		t.Errorf("Expected output: %s, got %s", "Hello, World!", string_out)
 	}
 }
