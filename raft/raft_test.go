@@ -190,13 +190,21 @@ func TestRaftNode_replicateEntry(t *testing.T) {
 	go node.runTest()
 	go node2.runTest()
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
 
 	// Replicate Entry
 	val := node.replicateEntry(ctx)
 
 	if val != true {
 		t.Errorf("Expected success, but got: %t", val)
+	}
+
+	// Testing ctx timeout
+	cancel()
+	val = node.replicateEntry(ctx)
+
+	if val != false {
+		t.Errorf("Expected failed, but got: %t", val)
 	}
 }
 
