@@ -10,105 +10,148 @@ import (
 type httpHandlerFunc func(w http.ResponseWriter, r *http.Request)
 
 func loggingMiddleware(next httpHandlerFunc) httpHandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        w.Header().Set("Content-Type", "application/json")
-        w.Header().Set("Access-Control-Allow-Origin", "*")
-        next(w, r)
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		next(w, r)
 
-        log.Println(
-            r.Method,
-            r.RequestURI,
-            r.RemoteAddr,
-            r.Form,
-        )
-    }
+		log.Println(
+			r.Method,
+			r.RequestURI,
+			r.RemoteAddr,
+			r.Form,
+		)
+	}
 }
 
 func handlePing(w http.ResponseWriter, r *http.Request) {
-    message, _ := json.Marshal(ping())
-    w.WriteHeader(http.StatusOK)
-    w.Write(message)
+	message, _ := json.Marshal(ping())
+	w.WriteHeader(http.StatusOK)
+	w.Write(message)
 }
 
 func handleGet(w http.ResponseWriter, r *http.Request) {
-    err := r.ParseForm()
-    if err != nil {
-        http.Error(w, "Failed to parse form data", http.StatusBadRequest)
-        return
-    }
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Failed to parse form data", http.StatusBadRequest)
+		return
+	}
 
-    key := r.Form.Get("key")
+	key := r.Form.Get("key")
 
-    message, _ := json.Marshal(get([]string{key}))
+	message, _ := json.Marshal(get([]string{key}))
 
-    w.WriteHeader(http.StatusOK)
-    w.Write(message)
+	w.WriteHeader(http.StatusOK)
+	w.Write(message)
 }
 
 func handleSet(w http.ResponseWriter, r *http.Request) {
-    err := r.ParseForm()
-    if err != nil {
-        http.Error(w, "Failed to parse form data", http.StatusBadRequest)
-        return
-    }
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Failed to parse form data", http.StatusBadRequest)
+		return
+	}
 
-    key := r.Form.Get("key")
-    value := r.Form.Get("value")
+	key := r.Form.Get("key")
+	value := r.Form.Get("value")
 
-    message, _ := json.Marshal(set([]string{key, value}))
+	message, _ := json.Marshal(set([]string{key, value}))
 
-    w.WriteHeader(http.StatusOK)
-    w.Write(message)
+	w.WriteHeader(http.StatusOK)
+	w.Write(message)
 }
 
 func handleStrln(w http.ResponseWriter, r *http.Request) {
-    err := r.ParseForm()
-    if err != nil {
-        http.Error(w, "Failed to parse form data", http.StatusBadRequest)
-        return
-    }
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Failed to parse form data", http.StatusBadRequest)
+		return
+	}
 
-    key := r.Form.Get("key")
+	key := r.Form.Get("key")
 
-    message, _ := json.Marshal(strln([]string{key}))
+	message, _ := json.Marshal(strln([]string{key}))
 
-    w.WriteHeader(http.StatusOK)
-    w.Write(message)
+	w.WriteHeader(http.StatusOK)
+	w.Write(message)
 }
 
 func handleDel(w http.ResponseWriter, r *http.Request) {
-    err := r.ParseForm()
-    if err != nil {
-        http.Error(w, "Failed to parse form data", http.StatusBadRequest)
-        return
-    }
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Failed to parse form data", http.StatusBadRequest)
+		return
+	}
 
-    key := r.Form.Get("key")
+	key := r.Form.Get("key")
 
-    message, _ := json.Marshal(del([]string{key}))
+	message, _ := json.Marshal(del([]string{key}))
 
-    w.WriteHeader(http.StatusOK)
-    w.Write(message)
+	w.WriteHeader(http.StatusOK)
+	w.Write(message)
 }
 
 func handleAppend(w http.ResponseWriter, r *http.Request) {
-    err := r.ParseForm()
-    if err != nil {
-        http.Error(w, "Failed to parse form data", http.StatusBadRequest)
-        return
-    }
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Failed to parse form data", http.StatusBadRequest)
+		return
+	}
 
-    key := r.Form.Get("key")
-    value := r.Form.Get("value")
+	key := r.Form.Get("key")
+	value := r.Form.Get("value")
 
-    message, _ := json.Marshal(Append([]string{key, value}))
+	message, _ := json.Marshal(Append([]string{key, value}))
 
-    w.WriteHeader(http.StatusOK)
-    w.Write(message)
+	w.WriteHeader(http.StatusOK)
+	w.Write(message)
 }
 
 func handleRequestLog(w http.ResponseWriter, r *http.Request) {
-    message, _ := json.Marshal(requestLog())
-    w.WriteHeader(http.StatusOK)
-    w.Write(message)
+	message, _ := json.Marshal(requestLog())
+	w.WriteHeader(http.StatusOK)
+	w.Write(message)
+}
+
+func handleGetAllNode(w http.ResponseWriter, r *http.Request) {
+	message, _ := json.Marshal(GetAllNode([]string{}))
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(message)
+}
+
+func handleAddNode(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Failed to parse form data", http.StatusBadRequest)
+		return
+	}
+
+	host := r.Form.Get("host")
+	port := r.Form.Get("port")
+
+	message, _ := json.Marshal(AddNode([]string{host, port}))
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(message)
+}
+
+func handleRemoveNode(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Failed to parse form data", http.StatusBadRequest)
+		return
+	}
+
+	host := r.Form.Get("host")
+	port := r.Form.Get("port")
+
+	message, _ := json.Marshal(RemoveNode([]string{host, port}))
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(message)
+}
+
+func handleGetLog(w http.ResponseWriter, r *http.Request) {
+
 }
