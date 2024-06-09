@@ -394,8 +394,35 @@ func TestRaftNode_singleRequestVote(t *testing.T) {
 	}
 }
 
-func TestRaftNode_getFollowerIndex(t *testing.T) {
-	// TODO: Add test cases.
+func TestRaftNode_initiateLeader(t *testing.T) {
+	serverAddress1 := transport.NewAddress("localhost", 2014)
+	serverAddress2 := transport.NewAddress("localhost", 2015)
+	serverAddress3 := transport.NewAddress("localhost", 2016)
+
+	node1 := NewNode(serverAddress1.String())
+	ListenServer(node1, grpc.NewServer())
+	node2 := NewNode(serverAddress2.String())
+	ListenServer(node2, grpc.NewServer())
+	node3 := NewNode(serverAddress3.String())
+	ListenServer(node3, grpc.NewServer())
+
+	node1.AddConnections([]string{
+		serverAddress1.String(),
+		serverAddress2.String(),
+		serverAddress3.String(),
+	})
+
+	// start node
+	go node1.runTest()
+	go node2.runTest()
+	go node3.runTest()
+
+	node1.initiateLeader()
+
+	state := node1.currentState.Load()
+	if state != _Leader {
+		t.Errorf("Expected state to be _Leader, but got: %d", state)
+	}
 }
 
 func TestRaftNode_createLogEntryArgs(t *testing.T) {
