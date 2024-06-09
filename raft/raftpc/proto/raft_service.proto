@@ -17,6 +17,7 @@ service RaftService {
 
     rpc ReqLog (LogRequest) returns (LogResponse);
     rpc ReqClusterInfo (ClusterInfoRequest) returns (ClusterInfoResponse);
+    rpc NodeState (StateRequest) returns (StateResponse);
 
     rpc AddNode (KeyValuedRequest) returns (MessageResponse);
     rpc RemoveNode (KeyedRequest) returns (MessageResponse);
@@ -69,11 +70,18 @@ message ClusterInfoRequest {
 }
 
 message NodeInfo {
-    uint64 state = 1;
-    string address = 2;
+    string address = 1;
 }
 
 message ClusterInfoResponse {
     repeated NodeInfo nodeInfo = 1;
     string leaderAddress = 2;
+}
+
+message StateRequest {
+    // none, for now; in case request log uses parameter in the future
+}
+
+message StateResponse {
+    string state = 1;
 }
