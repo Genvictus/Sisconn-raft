@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Sisconn-raft/raft"
 	pb "Sisconn-raft/raft/raftpc"
 	t "Sisconn-raft/raft/transport"
 	"bufio"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
 )
 
@@ -28,14 +30,21 @@ var (
 )
 
 func main() {
+
 	var clientInfo ClientParserInfo
 	flag.StringVar(&clientInfo.ServerHost, "host", "localhost", "Server host for target connection, default=localhost")
 	flag.IntVar(&clientInfo.ServerPort, "port", 6969, "Server port for target connection, default=6969")
 	flag.Parse()
 
 	serverAddress := t.NewAddress(clientInfo.ServerHost, clientInfo.ServerPort)
+	ClientLogger = log.New(os.Stdout, "[Raft] Client "+serverAddress.String()+" : ", 0)
 
-	ClientLogger = log.New(os.Stdout, "[Raft] Client: ", 0)
+	err := godotenv.Load()
+	if err != nil {
+		ClientLogger.Fatalf("Error loading .env file: %v", err)
+	} else {
+		raft.LoadClientConfig()
+	}
 
 	t.LogPrint(ClientLogger, "Client started")
 	t.LogPrint(ClientLogger, fmt.Sprintf("Connecting to server at %s", serverAddress.String()))

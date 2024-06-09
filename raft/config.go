@@ -78,6 +78,17 @@ func PrintConfig() {
 	fmt.Println("Election Timeout Max:", ELECTION_TIMEOUT_MAX)
 }
 
+func LoadClientConfig() {
+	// from os.env
+	timeoutClientInt, err := strconv.Atoi(os.Getenv("CLIENT_TIMEOUT"))
+	timeoutClient := time.Duration(timeoutClientInt) * time.Millisecond
+	if err != nil {
+		timeoutClient = CLIENT_TIMEOUT
+	}
+
+	SetClientTimeout(timeoutClient)
+}
+
 // Raft Constants
 const (
 	_MembershipLog = iota

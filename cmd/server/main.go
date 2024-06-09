@@ -25,22 +25,20 @@ var ServerVerboseLogger *log.Logger
 var RaftNode *raft.RaftNode
 
 func main() {
-	ServerLogger = log.New(os.Stdout, "[Raft] Server: ", 0)
-
-	err := godotenv.Load()
-	if err != nil {
-		ServerLogger.Println("Error loading .env file. Using default values.")
-	} else {
-		raft.LoadRaftConfig()
-	}
-
 	var serverInfo ServerParserInfo
 	flag.StringVar(&serverInfo.Host, "host", "localhost", "Server hostname that will be used by client, default=localhost")
 	flag.IntVar(&serverInfo.Port, "port", 6969, "Server port that will be used by client, default=6969")
 	flag.Parse()
 
 	serverAddress := transport.NewAddress(serverInfo.Host, serverInfo.Port)
+	ServerLogger = log.New(os.Stdout, "[Raft] Server "+serverAddress.String()+" : ", 0)
 
+	err := godotenv.Load()
+	if err != nil {
+		ServerLogger.Fatalf("Error loading .env file.")
+	} else {
+		raft.LoadRaftConfig()
+	}
 	transport.LogPrint(ServerLogger, "Server started")
 	// fmt.Println("Server started at", &serverAddress)
 
