@@ -43,7 +43,7 @@ Here are some of the functionalities of the client:
 
 | Nama | NIM |
 |------|-----|
-| [Yanuar Sano Nur Rasyid](https://github.com/yansans) | [13521110](https://github/noarotem) |
+| [Yanuar Sano Nur Rasyid](https://github.com/yansans) | [13521110](https://github.com/noarotem) |
 | [Ulung Adi Putra](https://github.com/Ulung32) | 13521122 |
 | [Michael Utama](https://github.com/Michaelu670) | 13521137 |
 | [Johann Christian Kandani](https://github.com/Genvictus) | 13521138 |
