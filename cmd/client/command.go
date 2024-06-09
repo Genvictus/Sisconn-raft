@@ -31,12 +31,18 @@ type Transaction struct {
 
 var TransactionList []Transaction
 
+func setClientLogger(serverAddress *t.Address) {
+	ClientLogger = log.New(os.Stdout, "[Raft] Client "+serverAddress.String()+" : ", 0)
+}
+
 func setTargetServer(server *t.Address) {
 	if conn != nil {
 		conn.Close()
 	}
 
 	targetServer = server
+	setClientLogger(targetServer)
+
 	conn, err = grpc.NewClient(targetServer.String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(t.LoggingInterceptorClient(ClientLogger)))
 	if err != nil {
 		return

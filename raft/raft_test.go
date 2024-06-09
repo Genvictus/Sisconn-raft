@@ -3,6 +3,7 @@ package raft
 import (
 	pb "Sisconn-raft/raft/raftpc"
 	"Sisconn-raft/raft/transport"
+	"fmt"
 	"log"
 	"net"
 	"testing"
@@ -51,7 +52,18 @@ func TestRaftNode_AddConnections(t *testing.T) {
 		t.Errorf("Node membership length is incorrect Expected: %d, but got: %d", 4, len(node.membership.logEntries))
 	}
 
-	// TODO test connection fail
+	// Test new connection fail
+	closeBuf := redirectStdout()
+
+	node.AddConnections([]string{
+		"localhost%:2001",
+	})
+
+	out := closeBuf()
+
+    string_out := string(out)
+
+	fmt.Println(string_out)
 }
 
 func TestRaftNode_RemoveConnections(t *testing.T) {
@@ -199,7 +211,8 @@ func TestRaftNode_requestVotes(t *testing.T) {
 		serverAddress6.String(),
 	})
 
-	// Test vote request
+	// start node
+	go node.runTest()
 
 	// Timeout to Follower
 	t.Log("Testing Timeout to Follower")
@@ -246,6 +259,9 @@ func TestRaftNode_singleRequestVote(t *testing.T) {
 		serverAddress3.String(),
 		serverAddress4.String(),
 	})
+
+	// start node
+	go node.runTest()
 
 	// Test vote request
 	lastIndex := node.log.lastIndex

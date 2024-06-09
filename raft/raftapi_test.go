@@ -398,6 +398,165 @@ func TestRequestVote(t *testing.T) {
 	}
 }
 
+func TestFollowerRequestRedirect(t *testing.T) {
+	// Setup follower
+	leaderAddress := transport.NewAddress("localhost", 8000)
+	followerAddress := transport.NewAddress("localhost", 8001)
+	lis, err := net.Listen("tcp", followerAddress.String())
+	if err != nil {
+		log.Fatalf("Failed to listen: %v", err)
+	}
+	defer lis.Close()
+
+	followerNode := NewNode(followerAddress.String())
+	followerNode.leaderAddress = leaderAddress.String()
+
+	go startGRPCServer(followerNode, lis)
+
+	conn, err := grpc.NewClient(followerAddress.String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("Failed to connect to server: %v", err)
+	}
+	follower := pb.NewRaftServiceClient(conn)
+
+	// Setup test
+	ctx := context.Background()
+
+	var (
+		messageResponse *pb.MessageResponse
+		valueResponse   *pb.ValueResponse
+		logresponse     *pb.LogResponse
+	)
+
+	expected := NotLeaderResponse + leaderAddress.String()
+
+	// Ping
+	messageResponse, err = follower.Ping(ctx, &pb.PingRequest{})
+	if err != nil {
+		t.Fatalf("Ping failed: %v", err)
+	}
+
+	if messageResponse.Response != expected {
+		t.Errorf("Expected response: %s, but got: %v", expected, messageResponse.Response)
+	}
+
+	if messageResponse.LeaderAddress != leaderAddress.String() {
+		t.Errorf("Expected leader address: %s, but got: %s", &leaderAddress, messageResponse.LeaderAddress)
+	}
+
+	// Get
+	valueResponse, err = follower.Get(ctx, &pb.KeyedRequest{})
+	if err != nil {
+		t.Fatalf("Get failed: %v", err)
+	}
+
+	if valueResponse.Value != expected {
+		t.Errorf("Expected response: %s, but got: %v", expected, valueResponse.Value)
+	}
+
+	if valueResponse.LeaderAddress != leaderAddress.String() {
+		t.Errorf("Expected leader address: %s, but got: %s", &leaderAddress, valueResponse.LeaderAddress)
+	}
+
+	// Set
+	messageResponse, err = follower.Set(ctx, &pb.KeyValuedRequest{})
+	if err != nil {
+		t.Fatalf("Set failed: %v", err)
+	}
+
+	if messageResponse.Response != expected {
+		t.Errorf("Expected response: %s, but got: %v", expected, messageResponse.Response)
+	}
+
+	if messageResponse.LeaderAddress != leaderAddress.String() {
+		t.Errorf("Expected leader address: %s, but got: %s", &leaderAddress, messageResponse.LeaderAddress)
+	}
+
+	// Strln
+	valueResponse, err = follower.Strln(ctx, &pb.KeyedRequest{})
+	if err != nil {
+		t.Fatalf("Strln failed: %v", err)
+	}
+
+	if valueResponse.Value != expected {
+		t.Errorf("Expected response: %s, but got: %v", expected, valueResponse.Value)
+	}
+
+	if valueResponse.LeaderAddress != leaderAddress.String() {
+		t.Errorf("Expected leader address: %s, but got: %s", &leaderAddress, valueResponse.LeaderAddress)
+	}
+
+	// Del
+	valueResponse, err = follower.Del(ctx, &pb.KeyedRequest{})
+	if err != nil {
+		t.Fatalf("Del failed: %v", err)
+	}
+
+	if valueResponse.Value != expected {
+		t.Errorf("Expected response: %s, but got: %v", expected, valueResponse.Value)
+	}
+
+	if valueResponse.LeaderAddress != leaderAddress.String() {
+		t.Errorf("Expected leader address: %s, but got: %s", &leaderAddress, valueResponse.LeaderAddress)
+	}
+
+	// Append
+	messageResponse, err = follower.Append(ctx, &pb.KeyValuedRequest{})
+	if err != nil {
+		t.Fatalf("Append failed: %v", err)
+	}
+
+	if messageResponse.Response != expected {
+		t.Errorf("Expected response: %s, but got: %v", expected, messageResponse.Response)
+	}
+
+	if messageResponse.LeaderAddress != leaderAddress.String() {
+		t.Errorf("Expected leader address: %s, but got: %s", &leaderAddress, messageResponse.LeaderAddress)
+	}
+
+	// Append
+	messageResponse, err = follower.Append(ctx, &pb.KeyValuedRequest{})
+	if err != nil {
+		t.Fatalf("Append failed: %v", err)
+	}
+
+	if messageResponse.Response != expected {
+		t.Errorf("Expected response: %s, but got: %v", expected, messageResponse.Response)
+	}
+
+	if messageResponse.LeaderAddress != leaderAddress.String() {
+		t.Errorf("Expected leader address: %s, but got: %s", &leaderAddress, messageResponse.LeaderAddress)
+	}
+
+	// ReqLog
+	logresponse, err = follower.ReqLog(ctx, &pb.LogRequest{})
+	if err != nil {
+		t.Fatalf("ReqLog failed: %v", err)
+	}
+
+	if logresponse.LogEntries != nil {
+		t.Errorf("Expected response: %v, but got: %v", nil, logresponse.LogEntries)
+	}
+
+	if logresponse.LeaderAddress != leaderAddress.String() {
+		t.Errorf("Expected leader address: %s, but got: %s", &leaderAddress, logresponse.LeaderAddress)
+	}
+
+	// Commit
+	messageResponse, err = follower.Commit(ctx, &pb.CommitRequest{})
+	if err != nil {
+		t.Fatalf("Commit failed: %v", err)
+	}
+
+	if messageResponse.Response != expected {
+		t.Errorf("Expected response: %s, but got: %v", expected, messageResponse.Response)
+	}
+
+	if messageResponse.LeaderAddress != leaderAddress.String() {
+		t.Errorf("Expected leader address: %s, but got: %s", &leaderAddress, messageResponse.LeaderAddress)
+	}
+}
+
 func startGRPCServer(node *RaftNode, lis net.Listener) {
 	grpcServer := grpc.NewServer()
 	pb.RegisterRaftServiceServer(grpcServer, &ServiceServer{Server: node})
