@@ -1,35 +1,17 @@
-import React, { useState } from 'react';
-import Node from '../types/Node';
-import LogModal from './LogModal';
+import React from 'react';
+import RaftNode from '../types/RaftNode';
 
-const DashboardTable: React.FC = () => {
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
-  const [selectedLogNode, setSelectedLogNode] = useState<number>(0);
+type DashboardTableProps = {
+  nodes: RaftNode[]
+  openLogModal: (index: number) => void
+  setNodes: (nodes: RaftNode[]) => void
+};
 
-  const dummyNode: Node = {
-    address: '',
-    state: '',
-    log: ''
-  }
-
-  const openLogModal = (index: number) => {
-    setSelectedLogNode(index);
-    setIsLogModalOpen(true);
-  }
-
-  const closeLogModal = () => {
-    setIsLogModalOpen(false);
-  }
-
-  const addNode = () => {
-    const newNode: Node = {
-      address: `http://localhost:${Math.floor(Math.random() * 10000)}`,
-      state: 'Follower',
-      log: 'tes\ntest\ntest\ntes\ntest\ntest\ntes\ntest\ntest\ntes\ntest\ntest\ntes\ntest\ntest\ntes\ntest\ntest\n\ntes\ntest\ntest\n\ntes\ntest\ntest\n'
-    };
-    setNodes([...nodes, newNode]);
-  };
+const DashboardTable: React.FC<DashboardTableProps> = ({
+  nodes,
+  openLogModal,
+  setNodes,
+}: DashboardTableProps) => {
 
   const deleteNode = (index: number) => {
     setNodes(nodes.filter((_, idx) => idx !== index));
@@ -40,21 +22,7 @@ const DashboardTable: React.FC = () => {
   };
 
   return (
-    <div>
-      <h1>Sisconn Raft Management Dashboard</h1>
-      <button
-        className='my-5 bg-green-500 hover:bg-green-700'
-        onClick={addNode}
-      >
-        Add New Node
-      </button>
-
-      <LogModal
-        modalIsOpen={isLogModalOpen}
-        closeModal={closeLogModal}
-        node={selectedLogNode < nodes.length ? nodes[selectedLogNode] : dummyNode}
-      />
-
+    <>
       <table className='w-full'>
         <thead>
           <tr>
@@ -91,7 +59,7 @@ const DashboardTable: React.FC = () => {
           ))}
         </tbody>
       </table>
-    </div>
+    </>
   );
 };
 

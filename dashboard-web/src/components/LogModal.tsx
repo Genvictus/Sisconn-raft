@@ -1,6 +1,6 @@
 import React from "react";
 import ReactModal from "react-modal";
-import Node from "../types/Node";
+import Node from "../types/RaftNode";
 
 type LogModalProps = {
     modalIsOpen: boolean;
@@ -25,7 +25,6 @@ const LogModal: React.FC<LogModalProps> = ({
                 <h1 className="text-2xl font-semibold mb-4">Node {node.address} Log</h1>
                 <textarea
                     className='w-full h-3/4 border border-gray-300 rounded-lg px-3 py-2 mb-4 resize-none overflow-auto outline-none border-none text-xl'
-                    // className="w-full h-1/2 p-4 resize-none overflow-auto outline-none border-none"
                     value={node.log}
                     readOnly >
                 </textarea>

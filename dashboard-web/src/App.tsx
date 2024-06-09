@@ -1,12 +1,77 @@
-import './App.css'
-import DashboardTable from './components/DashboardTable'
+import { useEffect, useState } from 'react';
+import './App.css';
+import DashboardTable from './components/DashboardTable';
+import LogModal from './components/LogModal';
+import ServerConfiguration from './components/ServerConfiguration';
+import RaftNode from './types/RaftNode';
 
 function App() {
+  const [nodes, setNodes] = useState<RaftNode[]>([]);
+  const [selectedLogNode, setSelectedLogNode] = useState<number>(0);
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+
+  const dummyNode: RaftNode = {
+    address: '',
+    state: '',
+    log: ''
+  }
+
+  const openLogModal = (index: number) => {
+    setSelectedLogNode(index);
+    setIsLogModalOpen(true);
+  }
+
+  const closeLogModal = () => {
+    setIsLogModalOpen(false);
+  }
+
+  const loadNodes = () => {
+    fetch('http://localhost:3000/nodes')
+      .then(res => res.json())
+      .then(data => setNodes(data))
+      .catch(err => console.error(err));
+  }
+
+  const addNode = () => {
+    const newNode: RaftNode = {
+      address: `http://localhost:${Math.floor(Math.random() * 10000)}`,
+      state: 'Follower',
+      log: 'tes\ntest\ntest\ntes\ntest\ntest\ntes\ntest\ntest\ntes\ntest\ntest\ntes\ntest\ntest\ntes\ntest\ntest\n\ntes\ntest\ntest\n\ntes\ntest\ntest\n'
+    };
+    setNodes([...nodes, newNode]);
+  };
+
+  useEffect(() => {
+    document.title = 'Sisconn Raft Management Dashboard';
+  }, []);
 
   return (
-    <>
-      <DashboardTable />
-    </>
+    <div className="w-screen h-screen">
+      <h1>Sisconn Raft Management Dashboard</h1>
+      
+      <div className="flex m-4">
+        <LogModal
+          modalIsOpen={isLogModalOpen}
+          closeModal={closeLogModal}
+          node={selectedLogNode < nodes.length ? nodes[selectedLogNode] : dummyNode}
+        />
+
+        <div className='w-2/3'>
+          <DashboardTable
+            nodes={nodes}
+            openLogModal={openLogModal}
+            setNodes={setNodes}
+          />
+        </div>
+
+        <div className='w-1/3'>
+          <ServerConfiguration
+            loadNodes={loadNodes}
+            addNode={addNode}
+          />
+        </div>
+      </div>
+    </div>
   )
 }
 

@@ -1,7 +1,7 @@
-interface Node {
+interface RaftNode {
   address: string;
   state: string;
   log: string;
 }
 
-export default Node;
+export default RaftNode;
