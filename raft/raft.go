@@ -13,6 +13,12 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+type followerIndex struct {
+	indexLock  sync.Mutex
+	nextIndex  uint64
+	matchIndex uint64
+}
+
 type raftState struct {
 	// also used as server ID
 	address string
@@ -36,9 +42,7 @@ type raftState struct {
 	membership keyValueReplication
 
 	// Leader States
-	indexLock  sync.RWMutex
-	nextIndex  map[string]uint64
-	matchIndex map[string]uint64
+	followerIndex map[string]*followerIndex
 }
 
 type RaftNode struct {
@@ -277,6 +281,19 @@ func (r *RaftNode) appendEntries(isHeartbeat bool, committedCh chan<- bool) {
 }
 
 func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) bool {
+	// check for ongoing appendEntries for target node
+	// if it is for heartbeat, try appendentries
+	if isHeartbeat {
+		// if failed to acquire lock, there exists an appendEntries RPCs
+		// ongoing for this follower, heartbeat is OK
+		if !r.followerIndex[address].indexLock.TryLock() {
+			return true
+		}
+	} else {
+		r.followerIndex[address].indexLock.Lock()
+	}
+	defer r.followerIndex[address].indexLock.Unlock()
+
 	targetClient := r.raftClient[address]
 	var appendSuccessful = false
 
@@ -294,7 +311,8 @@ func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) bool {
 		}
 
 		// get follower's log (supposedly) last index and term
-		prevLogIndex, prevLogTerm := r.getFollowerIndex(address)
+		var prevLogIndex = r.followerIndex[address].nextIndex - 1
+		var prevLogTerm = r.log.getEntries(prevLogIndex, prevLogIndex)[0].term
 		// prepare log entries
 		var logEntries []*pb.LogEntry
 		if isHeartbeat {
@@ -334,17 +352,14 @@ func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) bool {
 		r.compareTerm(result.Term)
 
 		// check if append is successful
-		r.indexLock.Lock()
 		if !result.Success {
 			// decrement the index for next appendEntries()
-			// TODO probably faulty
-			r.nextIndex[address]--
+			r.followerIndex[address].nextIndex--
 		} else {
 			appendSuccessful = true
 			// update the index
-			r.nextIndex[address] = lastIndex + 1
+			r.followerIndex[address].nextIndex = lastIndex + 1
 		}
-		r.indexLock.Unlock()
 
 		// if call is for heartbeat
 		if isHeartbeat {
@@ -445,17 +460,16 @@ func (r *RaftNode) initiateLeader() {
 	r.log.indexLock.RUnlock()
 
 	// initialize indexes to track followers
-	r.indexLock.Lock()
-	r.nextIndex = map[string]uint64{}
-	r.matchIndex = map[string]uint64{}
+	r.followerIndex = map[string]*followerIndex{}
 	// initiate indexes after each election
 	r.membership.stateLock.RLock()
 	for address := range r.membership.replicatedState {
-		r.nextIndex[address] = nextIndex
-		r.matchIndex[address] = 0
+		r.followerIndex[address] = &followerIndex{
+			nextIndex:  nextIndex,
+			matchIndex: 0,
+		}
 	}
 	r.membership.stateLock.RUnlock()
-	r.indexLock.Unlock()
 
 	// send initial heartbeat
 	go r.appendEntries(true, nil)
@@ -478,18 +492,6 @@ func (r *RaftNode) compareTerm(receivedTerm uint64) {
 }
 
 // additional funcs to help with implementation
-func (r *RaftNode) getFollowerIndex(address string) (uint64, uint64) {
-	r.indexLock.RLock()
-	if _, ok := r.nextIndex[address]; !ok {
-		r.nextIndex[address] = r.log.lastIndex + 1
-	}
-	var prevLogIndex = r.nextIndex[address] - 1
-	r.indexLock.RUnlock()
-	var prevLogTerm = r.log.getEntries(prevLogIndex, prevLogIndex)[0].term
-
-	return prevLogIndex, prevLogTerm
-}
-
 func (r *RaftNode) createLogEntryArgs(startIndex uint64, lastIndex uint64) []*pb.LogEntry {
 	logEntries := r.log.getEntries(startIndex, lastIndex)
 	var argEntries = make([]*pb.LogEntry, len(logEntries))
