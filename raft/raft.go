@@ -151,14 +151,18 @@ func (r *RaftNode) Run() {
 			}
 
 		case _Candidate:
-			r.requestVotes()
+			change := <-r.stateChange
+			switch change {
+			case _StepDown:
+				r.currentState.Store(_Follower)
+			}
 
 		case _Follower:
 			timer := time.NewTimer(randMs(ELECTION_TIMEOUT_MIN, ELECTION_TIMEOUT_MAX))
 			select {
 			case <-timer.C:
 				// Reached random timeout, begin election
-				r.currentState.Store(_Candidate)
+				r.requestVotes()
 			case change := <-r.stateChange:
 				if !timer.Stop() {
 					<-timer.C
@@ -188,7 +192,11 @@ func (r *RaftNode) runTest() {
 			}
 
 		case _Candidate:
-			r.requestVotes()
+			change := <-r.stateChange
+			switch change {
+			case _StepDown:
+				r.currentState.Store(_Follower)
+			}
 
 		case _Follower:
 			change := <-r.stateChange
@@ -370,6 +378,7 @@ func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) bool {
 }
 
 func (r *RaftNode) requestVotes() {
+	r.currentState.Store(_Candidate)
 	// increment term
 	r.raftLock.Lock()
 	r.currentTerm++
@@ -438,16 +447,10 @@ func (r *RaftNode) singleRequestVote(address string, lastLogIndex uint64, lastLo
 
 	log.Println("Vote result ", result)
 	// if follower term is newer immediately step down
-	if result.Term > r.currentTerm {
-		log.Println("Newer term detected, step down")
-		return false
-	}
+	r.compareTerm(result.Term)
 
 	// if vote is granted, return true
-	if result.VoteGranted {
-		return true
-	}
-	return false
+	return result.VoteGranted
 }
 
 func (r *RaftNode) initiateLeader() {
@@ -477,18 +480,21 @@ func (r *RaftNode) initiateLeader() {
 
 // handles RPC request or response's term
 func (r *RaftNode) compareTerm(receivedTerm uint64) {
+	r.raftLock.Lock()
 	currentTerm := r.currentTerm
 	if receivedTerm > currentTerm {
 		// handle new term
-		r.raftLock.Lock()
 		r.currentTerm = receivedTerm
-		r.raftLock.Unlock()
 		switch r.currentState.Load() {
 		case _Leader:
 			// if found a newer term, current leader is stale
 			r.stateChange <- _StepDown
+		case _Candidate:
+			r.votedFor = ""
+			r.stateChange <- _StepDown
 		}
 	}
+	r.raftLock.Unlock()
 }
 
 // additional funcs to help with implementation

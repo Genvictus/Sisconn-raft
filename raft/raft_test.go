@@ -199,7 +199,8 @@ func TestRaftNode_requestVotes(t *testing.T) {
 		serverAddress6.String(),
 	})
 
-	// Test vote request
+	// start node
+	go node.runTest()
 
 	// Timeout to Follower
 	t.Log("Testing Timeout to Follower")
@@ -246,6 +247,9 @@ func TestRaftNode_singleRequestVote(t *testing.T) {
 		serverAddress3.String(),
 		serverAddress4.String(),
 	})
+
+	// start node
+	go node.runTest()
 
 	// Test vote request
 	lastIndex := node.log.lastIndex

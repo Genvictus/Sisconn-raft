@@ -239,6 +239,8 @@ func (s *RaftServer) RequestVote(ctx context.Context, in *pb.RequestVoteArg) (*p
 	if in.Term < s.Server.currentTerm {
 		result.VoteGranted = false
 		return &result, nil
+	} else {
+		s.Server.compareTerm(in.Term)
 	}
 
 	if s.Server.votedFor == "" || s.Server.votedFor == in.CandidateId {
