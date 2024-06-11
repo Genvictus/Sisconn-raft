@@ -269,7 +269,7 @@ type RaftServer struct {
 }
 
 func (s *RaftServer) RequestVote(ctx context.Context, in *pb.RequestVoteArg) (*pb.VoteResult, error) {
-	log.Println("RequestVote")
+	log.Println("RequestVote RPC Received")
 	log.Println("Current voted for:", s.Server.votedFor)
 	defer func() {
 		log.Println("Final voted for:", s.Server.votedFor)
@@ -316,6 +316,7 @@ func (s *RaftServer) RequestVote(ctx context.Context, in *pb.RequestVoteArg) (*p
 }
 
 func (s *RaftServer) AppendEntries(ctx context.Context, in *pb.AppendEntriesArg) (*pb.AppendResult, error) {
+	log.Println("AppendEntries RPC Received")
 	currentTerm := s.Server.currentTerm
 	res := pb.AppendResult{
 		Term: currentTerm,

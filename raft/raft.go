@@ -162,7 +162,7 @@ func (r *RaftNode) Run() {
 			select {
 			case <-timer.C:
 				// Reached random timeout, begin election
-				r.requestVotes()
+				go r.requestVotes()
 			case change := <-r.stateChange:
 				switch change {
 				case _RefreshFollower:
