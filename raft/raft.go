@@ -153,7 +153,7 @@ func (r *RaftNode) Run() {
 		case _Candidate:
 			change := <-r.stateChange
 			switch change {
-			case _StepDown:
+			case _CancelElection:
 				r.currentState.Store(_Follower)
 			}
 
@@ -164,13 +164,13 @@ func (r *RaftNode) Run() {
 				// Reached random timeout, begin election
 				r.requestVotes()
 			case change := <-r.stateChange:
-				if !timer.Stop() {
-					<-timer.C
-				}
 				switch change {
 				case _RefreshFollower:
 					// received new AppendEntries, leader still alive,
-					// do nothing
+					// refresh timer
+					if !timer.Stop() {
+						<-timer.C
+					}
 				}
 			}
 		}
@@ -194,7 +194,7 @@ func (r *RaftNode) runTest() {
 		case _Candidate:
 			change := <-r.stateChange
 			switch change {
-			case _StepDown:
+			case _CancelElection:
 				r.currentState.Store(_Follower)
 			}
 
@@ -498,7 +498,7 @@ func (r *RaftNode) compareTerm(receivedTerm uint64) {
 			// if found a newer term, current leader is stale
 			r.stateChange <- _StepDown
 		case _Candidate:
-			r.stateChange <- _StepDown
+			r.stateChange <- _CancelElection
 		}
 	}
 	r.raftLock.Unlock()

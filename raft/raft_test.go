@@ -141,7 +141,7 @@ func TestRaftNode_Run(t *testing.T) {
 	node.currentState.Store(_Candidate)
 	node.stateChange <- _RefreshFollower
 
-	node.stateChange <- _StepDown
+	node.stateChange <- _CancelElection
 
 	state = node.currentState.Load()
 	if state != _Follower {
@@ -179,7 +179,7 @@ func TestRaftNode_RunTest(t *testing.T) {
 	node.currentState.Store(_Candidate)
 	node.stateChange <- _RefreshFollower
 
-	node.stateChange <- _StepDown
+	node.stateChange <- _CancelElection
 
 	state = node.currentState.Load()
 	if state != _Follower {

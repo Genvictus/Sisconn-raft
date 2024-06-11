@@ -104,7 +104,7 @@ const (
 const (
 	OkResponse        = "OK"
 	PendingResponse   = "PENDING"
-	NotLeaderResponse = "PLEASE CONTACT LEADER ADDRESS "
+	NotLeaderResponse = "NOT LEADER"
 )
 
 const (
@@ -114,6 +114,7 @@ const (
 
 const (
 	_RefreshFollower = iota
+	_CancelElection
 	_NewAppendEntry
 	_StepDown
 )
