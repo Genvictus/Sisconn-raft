@@ -365,6 +365,11 @@ func (r *RaftNode) singleAppendEntries(address string, isHeartbeat bool) bool {
 			r.followerIndex[address].nextIndex--
 		} else {
 			appendSuccessful = true
+			// if it is heartbeat, append is actually not successful
+			// DO NOT update the index because it resets the progress
+			if isHeartbeat {
+				break
+			}
 			// update the index
 			r.followerIndex[address].nextIndex = lastIndex + 1
 		}
